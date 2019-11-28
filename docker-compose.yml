@@ -1,0 +1,25 @@
+version: '3'
+
+services:
+  # development
+  inpe_stac_dev:
+    image: inpe_stac_dev:0.0.1
+    container_name: inpe_stac_dev
+    command: flask run --host=0.0.0.0
+    volumes:
+    - .:/app
+    env_file:
+      - environment.env
+    # restart: always
+    ports:
+      - "5000:5000"
+
+  # production
+  # inpe_stac:
+  #   image: registry.dpi.inpe.br/dgi/inpe_stac:0.0.1
+  #   container_name: inpe_stac
+  #   env_file:
+  #     - environment.env
+  #   # restart: always
+  #   ports:
+  #     - "5000:5000"

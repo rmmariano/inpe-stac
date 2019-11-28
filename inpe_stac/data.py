@@ -12,8 +12,8 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
 
     params = deepcopy(locals())
     params['page'] = (page - 1) * limit
-    sql = '''SELECT a.*, b.Dataset 
-             FROM Scene  a, Product  b, Dataset  c  
+    sql = '''SELECT a.*, b.Dataset
+             FROM Scene  a, Product  b, Dataset  c
              WHERE '''
 
     where = list()
@@ -47,9 +47,9 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
 
             except:
                 raise (InvalidBoundingBoxError())
-            
+
             if time is not None:
-                
+
                 if "/" in time:
                     params['time_start'], end = time.split("/")
                     params['time_end'] = datetime.fromisoformat(end)
@@ -57,7 +57,7 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
                 else:
                     params['time_start'] = datetime.fromisoformat(time)
                 where.append("a.Date >= :time_start")
-            
+
 
     where = " and ".join(where)
 
@@ -78,7 +78,7 @@ def get_collections():
     return result
 
 
-def get_collection(collection_id): 
+def get_collection(collection_id):
     result = do_query("SELECT b.Dataset as id, MIN(BL_Latitude) as miny, MIN(BL_Latitude) as minx, "\
                       "MAX(TR_Latitude) as maxx, MAX(TR_Longitude) as maxy,"\
                       "MIN(a.Date) as start, MAX(a.Date) as end , c.Description "\
@@ -100,7 +100,6 @@ def get_collection(collection_id):
     collection["properties"] = OrderedDict()
 
     return collection
-
 
 
 def make_geojson(items, links):
@@ -136,15 +135,15 @@ def make_geojson(items, links):
         feature['properties']['datetime'] = datetime.fromisoformat(str(i['Date'])).isoformat()
 
         sql = '''SELECT band, filename
-             FROM Product WHERE SceneId = :item_id 
+             FROM Product WHERE SceneId = :item_id
              GROUP BY band, SceneId;
              '''
         feature['assets'] = {}
-    
+
         assets = do_query(sql, item_id=i['SceneId'])
         for asset in assets:
             feature['assets'][asset['band']] = {'href': os.getenv('FILE_ROOT') + asset['filename']}
-    
+
         feature['assets']['thumbnail'] = {'href': get_browse_image(i['SceneId'])}
         feature['links'] = deepcopy(links)
         feature['links'][0]['href'] += i['Dataset'] + "/items/" + i['SceneId']
@@ -156,10 +155,11 @@ def make_geojson(items, links):
 
     if len(features) == 1:
         return features[0]
-        
+
     gjson['features'] = features
 
     return gjson
+
 
 # def make_geojson(data, totalResults, searchParams, output='json'):
 #     geojson = dict()
@@ -250,7 +250,6 @@ def bbox(coord_list):
         box.append((res[0][i], res[-1][i]))
     ret = [box[0][0], box[1][0], box[0][1], box[1][1]]
     return ret
-
 
 
 class InvalidBoundingBoxError(Exception):

@@ -1,7 +1,9 @@
+import os
+
 from flask import Flask, jsonify, request, abort
 from flasgger import Swagger
-import os
-from inpe_stac import data
+
+import data
 
 
 app = Flask(__name__)
