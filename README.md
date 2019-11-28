@@ -8,13 +8,13 @@ STAC (SpatioTemporal Asset Catalog) implementation for INPE Catalog.
 Install a specific Python version using pyenv:
 
 ```
-pyenv install 3.6.9
+pyenv install 3.7.0
 ```
 
 Create a Python environment with the Python version above through pyenv:
 
 ```
-pyenv virtualenv 3.6.9 inpe_stac
+pyenv virtualenv 3.7.0 inpe_stac
 ```
 
 Activate the virtual environment:
@@ -32,7 +32,7 @@ pip install -r requirements.txt
 Export the environment variables:
 
 ```
-set -a && source environment.env && set +a
+set -a && source environment.dev.env && set +a
 ```
 
 Run the service:

@@ -7,10 +7,9 @@ services:
     container_name: inpe_stac_dev
     command: flask run --host=0.0.0.0
     volumes:
-    - .:/app
+    - .:/inpe_stac
     env_file:
-      - environment.env
-    # restart: always
+      - environment.dev.env
     ports:
       - "5000:5000"
 
@@ -19,7 +18,7 @@ services:
   #   image: registry.dpi.inpe.br/dgi/inpe_stac:0.0.1
   #   container_name: inpe_stac
   #   env_file:
-  #     - environment.env
+  #     - environment.prod.env
   #   # restart: always
   #   ports:
   #     - "5000:5000"

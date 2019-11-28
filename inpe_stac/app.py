@@ -3,7 +3,7 @@ import os
 from flask import Flask, jsonify, request, abort
 from flasgger import Swagger
 
-import data
+from inpe_stac import data
 
 
 app = Flask(__name__)

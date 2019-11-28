@@ -1,10 +1,14 @@
-# FROM python:3.6.9-alpine
-FROM python:3.6.9
+FROM python:3.7-slim-buster
 
-RUN mkdir -p /app
-WORKDIR /app
+RUN apt-get update -y \
+    && apt-get install -y gcc libmariadb-dev\
+    && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt /app
+RUN mkdir -p /inpe_stac
+WORKDIR /inpe_stac
+
+# COPY inpe_stac/ /inpe_stac
+COPY requirements.txt /inpe_stac
 RUN pip install -r requirements.txt
 
 EXPOSE 5000
