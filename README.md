@@ -62,3 +62,11 @@ If you have credentials, then push the image to your registry:
 ```
 docker push registry.dpi.inpe.br/dgi/inpe_stac:0.0.2
 ```
+
+
+## Releases:
+
+| version | description                         |
+| ------- | ----------------------------------- |
+| 0.0.1   | First version                       |
+| 0.0.2   | Bug related to base URL was fixed   |
