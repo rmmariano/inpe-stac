@@ -17,6 +17,8 @@ app.config["SWAGGER"] = {
 
 swagger = Swagger(app, template_file="./spec/api/v0.7/STAC.yaml")
 
+BASE_URI = os.getenv("BASE_URI")
+
 
 @app.after_request
 def after_request(response):
@@ -26,12 +28,12 @@ def after_request(response):
 
 @app.route("/", methods=["GET"])
 def index():
-    links = [{"href": f"{request.url_root}", "rel": "self"},
-             {"href": f"{request.url_root}docs", "rel": "service"},
-             {"href": f"{request.url_root}conformance", "rel": "conformance"},
-             {"href": f"{request.url_root}collections", "rel": "data"},
-             {"href": f"{request.url_root}stac", "rel": "data"},
-             {"href": f"{request.url_root}stac/search", "rel": "search"}]
+    links = [{"href": f"{BASE_URI}", "rel": "self"},
+             {"href": f"{BASE_URI}docs", "rel": "service"},
+             {"href": f"{BASE_URI}conformance", "rel": "conformance"},
+             {"href": f"{BASE_URI}collections", "rel": "data"},
+             {"href": f"{BASE_URI}stac", "rel": "data"},
+             {"href": f"{BASE_URI}stac/search", "rel": "search"}]
     return jsonify(links)
 
 
@@ -47,11 +49,11 @@ def conformance():
 @app.route("/collections/<collection_id>", methods=["GET"])
 def collections_id(collection_id):
     collection = data.get_collection(collection_id)
-    links = [{"href": f"{request.url_root}collections/{collection_id}", "rel": "self"},
-             {"href": f"{request.url_root}collections/{collection_id}/items", "rel": "items"},
-             {"href": f"{request.url_root}collections", "rel": "parent"},
-             {"href": f"{request.url_root}collections", "rel": "root"},
-             {"href": f"{request.url_root}stac", "rel": "root"}]
+    links = [{"href": f"{BASE_URI}collections/{collection_id}", "rel": "self"},
+             {"href": f"{BASE_URI}collections/{collection_id}/items", "rel": "items"},
+             {"href": f"{BASE_URI}collections", "rel": "parent"},
+             {"href": f"{BASE_URI}collections", "rel": "root"},
+             {"href": f"{BASE_URI}stac", "rel": "root"}]
 
     collection['links'] = links
 
@@ -65,10 +67,10 @@ def collection_items(collection_id):
                                       page=int(request.args.get('page', 1)),
                                       limit=int(request.args.get('limit', 10)))
 
-    links = [{"href": f"{request.url_root}collections/", "rel": "self"},
-             {"href": f"{request.url_root}collections/", "rel": "parent"},
-             {"href": f"{request.url_root}collections/", "rel": "collection"},
-             {"href": f"{request.url_root}stac", "rel": "root"}]
+    links = [{"href": f"{BASE_URI}collections/", "rel": "self"},
+             {"href": f"{BASE_URI}collections/", "rel": "parent"},
+             {"href": f"{BASE_URI}collections/", "rel": "collection"},
+             {"href": f"{BASE_URI}stac", "rel": "root"}]
 
     gjson = data.make_geojson(items, links)
 
@@ -78,10 +80,10 @@ def collection_items(collection_id):
 @app.route("/collections/<collection_id>/items/<item_id>", methods=["GET"])
 def items_id(collection_id, item_id):
     item = data.get_collection_items(collection_id=collection_id, item_id=item_id)
-    links = [{"href": f"{request.url_root}collections/", "rel": "self"},
-             {"href": f"{request.url_root}collections/", "rel": "parent"},
-             {"href": f"{request.url_root}collections/", "rel": "collection"},
-             {"href": f"{request.url_root}stac", "rel": "root"}]
+    links = [{"href": f"{BASE_URI}collections/", "rel": "self"},
+             {"href": f"{BASE_URI}collections/", "rel": "parent"},
+             {"href": f"{BASE_URI}collections/", "rel": "collection"},
+             {"href": f"{BASE_URI}stac", "rel": "root"}]
 
     gjson = data.make_geojson(item, links)
 
@@ -97,10 +99,10 @@ def stac():
     catalog["id"] = "inpe-stac"
     catalog["stac_version"] = os.getenv("API_VERSION")
     links = list()
-    links.append({"href": request.url, "rel": "self"})
+    links.append({"href": f"{BASE_URI}collections", "rel": "self"})
 
     for collection in collections:
-        links.append({"href": f"{request.url_root}collections/{collection['id']}", "rel": "child", "title": collection['id']})
+        links.append({"href": f"{BASE_URI}collections/{collection['id']}", "rel": "child", "title": collection['id']})
 
     catalog["links"] = links
 
@@ -141,10 +143,10 @@ def stac_search():
 
     items = data.get_collection_items(collections=collections, bbox=bbox, time=time, ids=ids)
 
-    links = [{"href": f"{request.url_root}collections/", "rel": "self"},
-             {"href": f"{request.url_root}collections/", "rel": "parent"},
-             {"href": f"{request.url_root}collections/", "rel": "collection"},
-             {"href": f"{request.url_root}stac", "rel": "root"}]
+    links = [{"href": f"{BASE_URI}collections/", "rel": "self"},
+             {"href": f"{BASE_URI}collections/", "rel": "parent"},
+             {"href": f"{BASE_URI}collections/", "rel": "collection"},
+             {"href": f"{BASE_URI}stac", "rel": "root"}]
 
     gjson = data.make_geojson(items, links=links)
 

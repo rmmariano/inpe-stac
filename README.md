@@ -47,8 +47,8 @@ flask run --host=0.0.0.0
 Build a new image using the Dockerfile (development or production):
 
 ```
-docker build -t inpe_stac_dev:0.0.1 -f dev.Dockerfile . --no-cache
-docker build -t registry.dpi.inpe.br/dgi/inpe_stac:0.0.1 -f prod.Dockerfile . --no-cache
+docker build -t inpe_stac_dev:0.0.2 -f dev.Dockerfile . --no-cache
+docker build -t registry.dpi.inpe.br/dgi/inpe_stac:0.0.2 -f prod.Dockerfile . --no-cache
 ```
 
 Inside `docker-compose.yml` file there are two services (development or production), choose which one you like to run. Then, run the Docker compose:
@@ -60,5 +60,5 @@ docker-compose -f docker-compose.yml up
 If you have credentials, then push the image to your registry:
 
 ```
-docker push registry.dpi.inpe.br/dgi/inpe_stac:0.0.1
+docker push registry.dpi.inpe.br/dgi/inpe_stac:0.0.2
 ```
