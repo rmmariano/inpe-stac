@@ -12,6 +12,7 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
 
     params = deepcopy(locals())
     params['page'] = (page - 1) * limit
+
     sql = '''SELECT a.*, b.Dataset
              FROM Scene  a, Product  b, Dataset  c
              WHERE '''
@@ -113,6 +114,9 @@ def make_geojson(items, links):
         return gjson
 
     for i in items:
+        # print('\n\nSceneId: ', i['SceneId'])
+        # print('item: ', i, '\n\n')
+
         feature = OrderedDict()
 
         feature['type'] = 'Feature'
@@ -149,7 +153,6 @@ def make_geojson(items, links):
         feature['links'][0]['href'] += i['Dataset'] + "/items/" + i['SceneId']
         feature['links'][1]['href'] += i['Dataset']
         feature['links'][2]['href'] += i['Dataset']
-
 
         features.append(feature)
 
@@ -218,6 +221,7 @@ def get_browse_image(sceneid):
     sql = "SELECT QLfilename FROM Qlook WHERE SceneId = :sceneid"
 
     result = do_query(sql, sceneid=sceneid)
+
     if result is not None:
         return os.getenv('FILE_ROOT') + result[0]['QLfilename']
     else:
@@ -233,10 +237,14 @@ def do_query(sql, **kwargs):
 
     sql = text(sql)
     engine.execute("SET @@group_concat_max_len = 1000000;")
+
     result = engine.execute(sql, kwargs)
     result = result.fetchall()
+
     engine.dispose()
+
     result = [dict(row) for row in result]
+
     if len(result) > 0:
         return result
     else:

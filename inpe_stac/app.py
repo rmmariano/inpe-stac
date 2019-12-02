@@ -80,6 +80,7 @@ def collection_items(collection_id):
 @app.route("/collections/<collection_id>/items/<item_id>", methods=["GET"])
 def items_id(collection_id, item_id):
     item = data.get_collection_items(collection_id=collection_id, item_id=item_id)
+
     links = [{"href": f"{BASE_URI}collections/", "rel": "self"},
              {"href": f"{BASE_URI}collections/", "rel": "parent"},
              {"href": f"{BASE_URI}collections/", "rel": "collection"},

@@ -38,7 +38,7 @@ set -a && source environment.dev.env && set +a
 Run the service:
 
 ```
-flask run --host=0.0.0.0
+flask run --host=0.0.0.0 --port=5001
 ```
 
 
