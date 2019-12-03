@@ -29,7 +29,7 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
     where.append('a.SceneId = b.SceneId')
     # where.append('b.SceneId = d.SceneId')
 
-    # where.append('b.RadiometricProcessing = \'SR\'')
+    where.append('b.RadiometricProcessing = \'SR\'')
 
     if ids is not None:
         where.append("FIND_IN_SET(b.SceneId, :ids)")
