@@ -61,7 +61,7 @@ Build a new image using the Dockerfile (development or production):
         docker build -t registry.dpi.inpe.br/dgi/inpe_stac:0.0.2 -f prod.Dockerfile . --no-cache
 
 
-Inside `docker-compose.yml` file there are two services
+Inside ``docker-compose.yml`` file there are two services
 (development or production), choose which one you like to run.
 Then, run the Docker compose:
 
