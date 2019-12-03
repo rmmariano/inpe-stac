@@ -1,10 +1,14 @@
 import os
 import json
+
 from datetime import datetime
 from collections import OrderedDict
 from copy import deepcopy
+
 import sqlalchemy
 from sqlalchemy.sql import text
+
+from pprint import pprint
 
 
 def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None, type=None, ids=None, bands=None,
@@ -13,6 +17,9 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
     params = deepcopy(locals())
     params['page'] = (page - 1) * limit
 
+    # sql = '''SELECT a.*, b.Dataset
+    #          FROM Scene  a, Product  b, Dataset  c, Qlook d
+    #          WHERE '''
     sql = '''SELECT a.*, b.Dataset
              FROM Scene  a, Product  b, Dataset  c
              WHERE '''
@@ -20,6 +27,9 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
     where = list()
 
     where.append('a.SceneId = b.SceneId')
+    # where.append('b.SceneId = d.SceneId')
+
+    # where.append('b.RadiometricProcessing = \'SR\'')
 
     if ids is not None:
         where.append("FIND_IN_SET(b.SceneId, :ids)")
@@ -70,6 +80,10 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
 
     result = do_query(sql, **params)
 
+    # print('\n\nsql: ' + sql)
+    # print('\nresult:')
+    # pprint(result)
+
     return result
 
 
@@ -104,6 +118,12 @@ def get_collection(collection_id):
 
 
 def make_geojson(items, links):
+    if items is None:
+        return {
+            'type': 'FeatureCollection',
+            'features': []
+        }
+
     features = []
 
     gjson = OrderedDict()
@@ -114,8 +134,8 @@ def make_geojson(items, links):
         return gjson
 
     for i in items:
-        # print('\n\nSceneId: ', i['SceneId'])
-        # print('item: ', i, '\n\n')
+        # pprint('\n\nSceneId: ', i['SceneId'])
+        # pprint('item: ', i, '\n\n')
 
         feature = OrderedDict()
 
