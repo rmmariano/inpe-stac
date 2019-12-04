@@ -1,10 +1,14 @@
 import os
 import json
+
 from datetime import datetime
 from collections import OrderedDict
 from copy import deepcopy
+
 import sqlalchemy
 from sqlalchemy.sql import text
+
+from pprint import pprint
 
 
 def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None, type=None, ids=None, bands=None,
@@ -12,13 +16,20 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
 
     params = deepcopy(locals())
     params['page'] = (page - 1) * limit
-    sql = '''SELECT a.*, b.Dataset 
-             FROM Scene  a, Product  b, Dataset  c  
+
+    # sql = '''SELECT a.*, b.Dataset
+    #          FROM Scene  a, Product  b, Dataset  c, Qlook d
+    #          WHERE '''
+    sql = '''SELECT a.*, b.Dataset
+             FROM Scene  a, Product  b, Dataset  c
              WHERE '''
 
     where = list()
 
     where.append('a.SceneId = b.SceneId')
+    # where.append('b.SceneId = d.SceneId')
+
+    where.append('b.RadiometricProcessing = \'SR\'')
 
     if ids is not None:
         where.append("FIND_IN_SET(b.SceneId, :ids)")
@@ -47,9 +58,9 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
 
             except:
                 raise (InvalidBoundingBoxError())
-            
+
             if time is not None:
-                
+
                 if "/" in time:
                     params['time_start'], end = time.split("/")
                     params['time_end'] = datetime.fromisoformat(end)
@@ -57,7 +68,7 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
                 else:
                     params['time_start'] = datetime.fromisoformat(time)
                 where.append("a.Date >= :time_start")
-            
+
 
     where = " and ".join(where)
 
@@ -69,6 +80,10 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
 
     result = do_query(sql, **params)
 
+    # print('\n\nsql: ' + sql)
+    # print('\nresult:')
+    # pprint(result)
+
     return result
 
 
@@ -78,7 +93,7 @@ def get_collections():
     return result
 
 
-def get_collection(collection_id): 
+def get_collection(collection_id):
     result = do_query("SELECT b.Dataset as id, MIN(BL_Latitude) as miny, MIN(BL_Latitude) as minx, "\
                       "MAX(TR_Latitude) as maxx, MAX(TR_Longitude) as maxy,"\
                       "MIN(a.Date) as start, MAX(a.Date) as end , c.Description "\
@@ -102,8 +117,13 @@ def get_collection(collection_id):
     return collection
 
 
-
 def make_geojson(items, links):
+    if items is None:
+        return {
+            'type': 'FeatureCollection',
+            'features': []
+        }
+
     features = []
 
     gjson = OrderedDict()
@@ -114,6 +134,9 @@ def make_geojson(items, links):
         return gjson
 
     for i in items:
+        # pprint('\n\nSceneId: ', i['SceneId'])
+        # pprint('item: ', i, '\n\n')
+
         feature = OrderedDict()
 
         feature['type'] = 'Feature'
@@ -136,30 +159,30 @@ def make_geojson(items, links):
         feature['properties']['datetime'] = datetime.fromisoformat(str(i['Date'])).isoformat()
 
         sql = '''SELECT band, filename
-             FROM Product WHERE SceneId = :item_id 
+             FROM Product WHERE SceneId = :item_id
              GROUP BY band, SceneId;
              '''
         feature['assets'] = {}
-    
+
         assets = do_query(sql, item_id=i['SceneId'])
         for asset in assets:
             feature['assets'][asset['band']] = {'href': os.getenv('FILE_ROOT') + asset['filename']}
-    
+
         feature['assets']['thumbnail'] = {'href': get_browse_image(i['SceneId'])}
         feature['links'] = deepcopy(links)
         feature['links'][0]['href'] += i['Dataset'] + "/items/" + i['SceneId']
         feature['links'][1]['href'] += i['Dataset']
         feature['links'][2]['href'] += i['Dataset']
 
-
         features.append(feature)
 
     if len(features) == 1:
         return features[0]
-        
+
     gjson['features'] = features
 
     return gjson
+
 
 # def make_geojson(data, totalResults, searchParams, output='json'):
 #     geojson = dict()
@@ -218,6 +241,7 @@ def get_browse_image(sceneid):
     sql = "SELECT QLfilename FROM Qlook WHERE SceneId = :sceneid"
 
     result = do_query(sql, sceneid=sceneid)
+
     if result is not None:
         return os.getenv('FILE_ROOT') + result[0]['QLfilename']
     else:
@@ -233,10 +257,14 @@ def do_query(sql, **kwargs):
 
     sql = text(sql)
     engine.execute("SET @@group_concat_max_len = 1000000;")
+
     result = engine.execute(sql, kwargs)
     result = result.fetchall()
+
     engine.dispose()
+
     result = [dict(row) for row in result]
+
     if len(result) > 0:
         return result
     else:
@@ -250,7 +278,6 @@ def bbox(coord_list):
         box.append((res[0][i], res[-1][i]))
     ret = [box[0][0], box[1][0], box[0][1], box[1][1]]
     return ret
-
 
 
 class InvalidBoundingBoxError(Exception):
