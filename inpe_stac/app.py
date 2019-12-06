@@ -95,12 +95,19 @@ def items_id(collection_id, item_id):
 @app.route("/stac", methods=["GET"])
 def stac():
     collections = data.get_collections()
-    catalog = dict()
-    catalog["stac_version"] = os.getenv("API_VERSION")
-    catalog["id"] = "inpe-stac"
-    catalog["description"] = "INPE STAC Catalog"
-    links = list()
-    links.append({"href": f"{BASE_URI}stac", "rel": "self"})
+
+    catalog = {
+        "stac_version": os.getenv("API_VERSION"),
+        "id": "inpe-stac",
+        "description": "INPE STAC Catalog"
+    }
+
+    links = [
+        {
+            "href": f"{BASE_URI}stac",
+            "rel": "self"
+        }
+    ]
 
     for collection in collections:
         links.append(
