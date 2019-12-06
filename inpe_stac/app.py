@@ -1,3 +1,9 @@
+"""
+STAC API Specification
+
+Specification: https://github.com/radiantearth/stac-spec/blob/master/api-spec/api-spec.md#stac-api-specification
+"""
+
 import os
 
 from flask import Flask, jsonify, request, abort
@@ -26,6 +32,11 @@ def after_request(response):
     return response
 
 
+##################################################
+# OGC API - Features Endpoints
+# Specification: https://github.com/radiantearth/stac-spec/blob/master/api-spec/api-spec.md#ogc-api---features-endpoints
+##################################################
+
 @app.route("/", methods=["GET"])
 def index():
     links = [{"href": f"{BASE_URI}", "rel": "self"},
@@ -44,6 +55,12 @@ def conformance():
                                "http://www.opengis.net/spec/wfs-1/3.0/req/html",
                                "http://www.opengis.net/spec/wfs-1/3.0/req/geojson"]}
     return jsonify(conforms)
+
+
+# @app.route("/collections", methods=["GET"])
+# def collections():
+#     # TODO
+#     pass
 
 
 @app.route("/collections/<collection_id>", methods=["GET"])
@@ -91,9 +108,18 @@ def items_id(collection_id, item_id):
     return jsonify(gjson)
 
 
+##################################################
+# STAC Endpoints
+# Specification: https://github.com/radiantearth/stac-spec/blob/master/api-spec/api-spec.md#stac-endpoints
+##################################################
+
 @app.route("/collections", methods=["GET"])
 @app.route("/stac", methods=["GET"])
 def stac():
+    """
+    Specification: https://github.com/radiantearth/stac-spec/blob/master/catalog-spec/catalog-spec.md#catalog-fields
+    """
+
     collections = data.get_collections()
 
     catalog = {
@@ -167,6 +193,10 @@ def stac_search():
     return jsonify(gjson)
 
 
+##################################################
+# Error Endpoints
+##################################################
+
 @app.errorhandler(400)
 def handle_bad_request(e):
     resp = jsonify({'code': '400', 'description': 'Bad Request - {}'.format(e.description)})
@@ -215,6 +245,10 @@ def handle_exception(e):
 
     return resp
 
+
+##################################################
+# Main
+##################################################
 
 if __name__ == '__main__':
     app.run()
