@@ -96,14 +96,20 @@ def items_id(collection_id, item_id):
 def stac():
     collections = data.get_collections()
     catalog = dict()
-    catalog["description"] = "INPE STAC Catalog"
-    catalog["id"] = "inpe-stac"
     catalog["stac_version"] = os.getenv("API_VERSION")
+    catalog["id"] = "inpe-stac"
+    catalog["description"] = "INPE STAC Catalog"
     links = list()
-    links.append({"href": f"{BASE_URI}collections", "rel": "self"})
+    links.append({"href": f"{BASE_URI}stac", "rel": "self"})
 
     for collection in collections:
-        links.append({"href": f"{BASE_URI}collections/{collection['id']}", "rel": "child", "title": collection['id']})
+        links.append(
+            {
+                "href": f"{BASE_URI}collections/{collection['id']}",
+                "rel": "child",
+                "title": collection['id']
+            }
+        )
 
     catalog["links"] = links
 
