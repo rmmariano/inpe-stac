@@ -2,6 +2,7 @@
 STAC API Specification
 
 Specification: https://github.com/radiantearth/stac-spec/blob/master/api-spec/api-spec.md#stac-api-specification
+OpenAPI definition: https://stacspec.org/STAC-ext-api.html
 """
 
 import os
