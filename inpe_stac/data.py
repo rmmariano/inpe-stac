@@ -9,7 +9,16 @@ import sqlalchemy
 from sqlalchemy.sql import text
 
 from pprint import pprint
+import logging
 
+handler = logging.FileHandler('inpe_stac.log')
+handler.setFormatter(logging.Formatter(
+    '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
+))
+
+logger = logging.getLogger('data')
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
 
 def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None, type=None, ids=None, bands=None,
                          collections=None, page=1, limit=10):
@@ -17,19 +26,16 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
     params = deepcopy(locals())
     params['page'] = (page - 1) * limit
 
+    logging.warning('get_collection_items - params - {}'.format(params))
+
     # sql = '''SELECT a.*, b.Dataset
     #          FROM Scene  a, Product  b, Dataset  c, Qlook d
     #          WHERE '''
-    sql = '''SELECT a.*, b.Dataset
-             FROM Scene  a, Product  b, Dataset  c
-             WHERE '''
+    sql = '''SELECT a.*, b.Dataset FROM Scene  a, Product  b, Dataset  c WHERE '''
 
     where = list()
 
     where.append('a.SceneId = b.SceneId')
-    # where.append('b.SceneId = d.SceneId')
-
-    where.append('b.RadiometricProcessing = \'SR\'')
 
     if ids is not None:
         where.append("FIND_IN_SET(b.SceneId, :ids)")
@@ -69,20 +75,19 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
                     params['time_start'] = datetime.fromisoformat(time)
                 where.append("a.Date >= :time_start")
 
-
     where = " and ".join(where)
 
     sql += where
 
     sql += " GROUP BY a.SceneId ORDER BY a.Date DESC"
-
     sql += " LIMIT :page, :limit"
 
     result = do_query(sql, **params)
 
-    # print('\n\nsql: ' + sql)
-    # print('\nresult:')
-    # pprint(result)
+    if result is not None:
+        logging.warning('get_collection_items - {} - sql - {}'.format(len(result),sql))
+    else:
+        logging.warning('get_collection_items - no result - sql - {}'.format(sql))
 
     return result
 
@@ -90,6 +95,12 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
 def get_collections():
     sql = "SELECT a.Dataset AS id FROM Product a, Dataset b WHERE a.Dataset = b.Name GROUP BY Dataset"
     result = do_query(sql)
+
+    if result is not None:
+        logging.warning('get_collections - {} - sql - {}'.format(len(result),sql))
+    else:
+        logging.warning('get_collections - no result - sql - {}'.format(sql))
+
     return result
 
 
@@ -166,7 +177,7 @@ def make_geojson(items, links):
 
         assets = do_query(sql, item_id=i['SceneId'])
         for asset in assets:
-            feature['assets'][asset['band']] = {'href': os.getenv('FILE_ROOT') + asset['filename']}
+            feature['assets'][asset['band']] = {'href': os.getenv('TIF_ROOT') + asset['filename']}
 
         feature['assets']['thumbnail'] = {'href': get_browse_image(i['SceneId'])}
         feature['links'] = deepcopy(links)
@@ -243,7 +254,8 @@ def get_browse_image(sceneid):
     result = do_query(sql, sceneid=sceneid)
 
     if result is not None:
-        return os.getenv('FILE_ROOT') + result[0]['QLfilename']
+        logging.warning('get_browse_image url - {}'.format(os.getenv('PNG_ROOT') + result[0]['QLfilename']))
+        return os.getenv('PNG_ROOT') + result[0]['QLfilename']
     else:
         return None
 
