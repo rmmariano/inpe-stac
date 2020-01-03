@@ -92,3 +92,5 @@ Releases
      - Bug related to base URL was fixed
    * - 0.0.3
      - Searching just Surface Reflectance scenes
+   * - 0.0.4
+     - Logs were added, database query and some bugs were fixed
