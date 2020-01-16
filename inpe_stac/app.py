@@ -126,26 +126,23 @@ def stac():
     catalog = {
         "stac_version": os.getenv("API_VERSION"),
         "id": "inpe-stac",
-        "description": "INPE STAC Catalog"
+        "description": "INPE STAC Catalog",
+        "links": [
+            {
+                "href": f"{BASE_URI}stac",
+                "rel": "self"
+            }
+        ]
     }
 
-    links = [
-        {
-            "href": f"{BASE_URI}stac",
-            "rel": "self"
-        }
-    ]
-
     for collection in collections:
-        links.append(
+        catalog["links"].append(
             {
                 "href": f"{BASE_URI}collections/{collection['id']}",
                 "rel": "child",
                 "title": collection['id']
             }
         )
-
-    catalog["links"] = links
 
     return jsonify(catalog)
 
