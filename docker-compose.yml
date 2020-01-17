@@ -2,9 +2,9 @@ version: '3'
 
 services:
   # development
-  inpe_stac_dev:
-    image: inpe_stac_dev:0.0.1
-    container_name: inpe_stac_dev
+  inpe_stac:
+    image: inpe_stac
+    container_name: inpe_stac
     command: flask run --host=0.0.0.0
     volumes:
     - .:/inpe_stac
