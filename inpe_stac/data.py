@@ -93,13 +93,14 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
 
 
 def get_collections():
-    sql = "SELECT a.Dataset AS id FROM Product a, Dataset b WHERE a.Dataset = b.Name GROUP BY Dataset"
-    result = do_query(sql)
+    query = 'SELECT * FROM collection;'
+
+    result = do_query(query)
 
     if result is not None:
-        logging.warning('get_collections - {} - sql - {}'.format(len(result),sql))
+        logging.warning('get_collections - {} - sql - {}'.format(len(result), query))
     else:
-        logging.warning('get_collections - no result - sql - {}'.format(sql))
+        logging.warning('get_collections - no result - sql - {}'.format(query))
 
     return result
 

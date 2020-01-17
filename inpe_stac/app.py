@@ -25,6 +25,7 @@ app.config["SWAGGER"] = {
 swagger = Swagger(app, template_file="./spec/api/v0.7/STAC.yaml")
 
 BASE_URI = os.getenv("BASE_URI")
+API_VERSION = os.getenv("API_VERSION")
 
 
 @app.after_request
@@ -58,10 +59,41 @@ def conformance():
     return jsonify(conforms)
 
 
-# @app.route("/collections", methods=["GET"])
-# def collections():
-#     # TODO
-#     pass
+@app.route("/collections", methods=["GET"])
+def collections():
+    """
+    Specification: https://github.com/radiantearth/stac-spec/blob/v0.7.0/collection-spec/collection-spec.md#collection-fields
+    """
+
+    result = data.get_collections()
+
+    collections = {
+        'collections': []
+    }
+
+    for collection in result:
+        collections['collections'].append(
+            {
+                'stac_version': API_VERSION,
+                'id': collection['id'],
+                'title': collection['id'],
+                'description': collection['description'],
+                'license': '',
+                'extent': [],
+                'links': [
+                    {
+                        "href": f"{BASE_URI}collections/{collection['id']}",
+                        "rel": "self"
+                    },
+                    {
+                        "href": f"{BASE_URI}stac/",
+                        "rel": "root"
+                    }
+                ]
+            }
+        )
+
+    return jsonify(collections)
 
 
 @app.route("/collections/<collection_id>", methods=["GET"])
@@ -114,17 +146,16 @@ def items_id(collection_id, item_id):
 # Specification: https://github.com/radiantearth/stac-spec/blob/master/api-spec/api-spec.md#stac-endpoints
 ##################################################
 
-@app.route("/collections", methods=["GET"])
 @app.route("/stac", methods=["GET"])
 def stac():
     """
-    Specification: https://github.com/radiantearth/stac-spec/blob/master/catalog-spec/catalog-spec.md#catalog-fields
+    Specification: https://github.com/radiantearth/stac-spec/blob/v0.7.0/catalog-spec/catalog-spec.md#catalog-fields
     """
 
     collections = data.get_collections()
 
     catalog = {
-        "stac_version": os.getenv("API_VERSION"),
+        "stac_version": API_VERSION,
         "id": "inpe-stac",
         "description": "INPE STAC Catalog",
         "links": [
