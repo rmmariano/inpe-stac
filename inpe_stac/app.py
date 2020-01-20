@@ -7,15 +7,11 @@ Specification: https://github.com/radiantearth/stac-spec/blob/master/api-spec/ap
 OpenAPI definition: https://stacspec.org/STAC-ext-api.html
 """
 
-import os
-from collections import OrderedDict
-
 from flask import Flask, jsonify, request, abort
 from flasgger import Swagger
 
 from inpe_stac import data
-
-from .environment import BASE_URI, API_VERSION
+from inpe_stac.environment import BASE_URI, API_VERSION
 
 
 app = Flask(__name__)

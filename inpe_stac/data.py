@@ -11,7 +11,7 @@ from sqlalchemy.sql import text
 
 from pprint import pprint
 
-from .log import logging
+from inpe_stac.log import logging
 
 
 def get_collections(collection_id=None):
