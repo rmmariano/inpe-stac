@@ -14,10 +14,14 @@ from pprint import pprint
 from inpe_stac.log import logging
 
 
-def get_collections(collection_id=None):
-    logging.warning('\n\nget_collections()')
+def len_result(result):
+    return len(result) if result is not None else len([])
 
-    logging.warning('collection_id: {}'.format(collection_id))
+
+def get_collections(collection_id=None):
+    logging.info('\n\nget_collections()')
+
+    logging.info('nget_collections - collection_id: {}'.format(collection_id))
 
     kwargs = {}
     where = ''
@@ -29,11 +33,12 @@ def get_collections(collection_id=None):
 
     query = 'SELECT * FROM collection {};'.format(where)
 
-    logging.warning('query: {}'.format(query))
+    logging.info('nget_collections - query: {}'.format(query))
 
     result = do_query(query, **kwargs)
 
-    logging.warning('result: {}'.format(result))
+    logging.info('nget_collections - len(result): {}'.format(len_result(result)))
+    # logging.debug('nget_collections - result: {}'.format(result))
 
     return result
 
@@ -41,18 +46,19 @@ def get_collections(collection_id=None):
 def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None, type=None, ids=None, bands=None,
                          collections=None, page=1, limit=10):
 
+    logging.info('\n\nget_collection_items()')
+
     params = deepcopy(locals())
     params['page'] = (page - 1) * limit
 
-    logging.warning('get_collection_items - params - {}'.format(params))
+    logging.info('get_collection_items - params: {}'.format(params))
 
     # sql = '''SELECT a.*, b.Dataset
     #          FROM Scene  a, Product  b, Dataset  c, Qlook d
     #          WHERE '''
-    sql = '''SELECT a.*, b.Dataset FROM Scene  a, Product  b, Dataset  c WHERE '''
+    sql = '''SELECT a.*, b.Dataset FROM Scene a, Product b, Dataset c WHERE '''
 
     where = list()
-
     where.append('a.SceneId = b.SceneId')
 
     if ids is not None:
@@ -93,19 +99,19 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
                     params['time_start'] = datetime.fromisoformat(time)
                 where.append("a.Date >= :time_start")
 
-    where = " and ".join(where)
+    where = " AND ".join(where)
 
     sql += where
 
     sql += " GROUP BY a.SceneId ORDER BY a.Date DESC"
     sql += " LIMIT :page, :limit"
 
+    logging.info('get_collection_items - query: {}'.format(query))
+
     result = do_query(sql, **params)
 
-    if result is not None:
-        logging.warning('get_collection_items - {} - sql - {}'.format(len(result),sql))
-    else:
-        logging.warning('get_collection_items - no result - sql - {}'.format(sql))
+    logging.info('get_collection_items - len(result): {}'.format(len_result(result)))
+    # logging.debug('get_collection_items - result: {}'.format(result))
 
     return result
 
