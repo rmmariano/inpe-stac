@@ -14,6 +14,30 @@ from pprint import pprint
 from .log import logging
 
 
+def get_collections(collection_id=None):
+    logging.warning('\n\nget_collections()')
+
+    logging.warning('collection_id: {}'.format(collection_id))
+
+    kwargs = {}
+    where = ''
+
+    # if there is a 'collection_id' key to search, then add the WHERE clause and the key to kwargs
+    if collection_id is not None:
+        where = 'WHERE id = :collection_id'
+        kwargs = { 'collection_id': collection_id }
+
+    query = 'SELECT * FROM collection {};'.format(where)
+
+    logging.warning('query: {}'.format(query))
+
+    result = do_query(query, **kwargs)
+
+    logging.warning('result: {}'.format(result))
+
+    return result
+
+
 def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None, type=None, ids=None, bands=None,
                          collections=None, page=1, limit=10):
 
@@ -82,30 +106,6 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
         logging.warning('get_collection_items - {} - sql - {}'.format(len(result),sql))
     else:
         logging.warning('get_collection_items - no result - sql - {}'.format(sql))
-
-    return result
-
-
-def get_collections(collection_id=None):
-    logging.warning('\n\nget_collections()')
-
-    logging.warning('collection_id: {}'.format(collection_id))
-
-    kwargs = {}
-    where = ''
-
-    # if there is a 'collection_id' key to search, then add the WHERE clause and the key to kwargs
-    if collection_id is not None:
-        where = 'WHERE id = :collection_id'
-        kwargs = { 'collection_id': collection_id }
-
-    query = 'SELECT * FROM collection {};'.format(where)
-
-    logging.warning('query: {}'.format(query))
-
-    result = do_query(query, **kwargs)
-
-    logging.warning('result: {}'.format(result))
 
     return result
 
