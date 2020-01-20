@@ -98,6 +98,8 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
 def get_collections(collection_id=None):
     logging.warning('\n\nget_collections()')
 
+    logging.warning('collection_id: {}'.format(collection_id))
+
     kwargs = {}
     where = ''
 
@@ -108,7 +110,11 @@ def get_collections(collection_id=None):
 
     query = 'SELECT * FROM collection {};'.format(where)
 
+    logging.warning('query: {}'.format(query))
+
     result = do_query(query, **kwargs)
+
+    logging.warning('result: {}'.format(result))
 
     if result is not None:
         logging.warning('len(result): {} - query: {}'.format(len(result), query))
@@ -121,16 +127,7 @@ def get_collections(collection_id=None):
 def get_collection(collection_id):
     logging.warning('\n\nget_collection(collection_id)')
 
-    result = do_query("SELECT b.Dataset as id, MIN(BL_Latitude) as min_y, MIN(BL_Latitude) as min_x, "\
-                      "MAX(TR_Latitude) as max_x, MAX(TR_Longitude) as max_y,"\
-                      "MIN(a.Date) as start_date, MAX(a.Date) as end_date, c.Description "\
-                      "FROM Scene a, Product b, Dataset c "\
-                      "WHERE a.sceneId = b.sceneId and b.Dataset = :collection_id and c.name = b.Dataset "\
-                      "GROUP BY b.Dataset", collection_id=collection_id)[0]
-
-    # result = get_collections(collection_id=collection_id)
-
-    logging.warning('result: {}'.format(result))
+    result = get_collections(collection_id=collection_id)[0]
 
     collection = {}
     collection['id'] = collection_id
@@ -138,7 +135,7 @@ def get_collection(collection_id):
     end = None if result['end_date'] is None else result['end_date'].isoformat()
 
     collection["stac_version"] = os.getenv("API_VERSION")
-    collection["description"] = result["Description"]
+    collection["description"] = result["description"]
 
     collection["license"] = None
     collection["properties"] = {}
