@@ -4,7 +4,6 @@ import os
 import json
 
 from datetime import datetime
-from collections import OrderedDict
 from copy import deepcopy
 
 import sqlalchemy
@@ -116,33 +115,7 @@ def get_collections(collection_id=None):
 
     logging.warning('result: {}'.format(result))
 
-    if result is not None:
-        logging.warning('len(result): {} - query: {}'.format(len(result), query))
-    else:
-        logging.warning('no result - query: {}'.format(query))
-
     return result
-
-
-def get_collection(collection_id):
-    logging.warning('\n\nget_collection(collection_id)')
-
-    result = get_collections(collection_id=collection_id)[0]
-
-    collection = {}
-    collection['id'] = collection_id
-    start = result['start_date'].isoformat()
-    end = None if result['end_date'] is None else result['end_date'].isoformat()
-
-    collection["stac_version"] = os.getenv("API_VERSION")
-    collection["description"] = result["description"]
-
-    collection["license"] = None
-    collection["properties"] = {}
-    collection["extent"] = {"spatial": [result['min_x'],result['min_y'],result['max_x'],result['max_y']], "time": [start, end]}
-    collection["properties"] = OrderedDict()
-
-    return collection
 
 
 def make_geojson(items, links):

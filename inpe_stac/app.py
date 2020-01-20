@@ -8,6 +8,7 @@ OpenAPI definition: https://stacspec.org/STAC-ext-api.html
 """
 
 import os
+from collections import OrderedDict
 
 from flask import Flask, jsonify, request, abort
 from flasgger import Swagger
@@ -105,17 +106,34 @@ def collections():
 
 @app.route("/collections/<collection_id>", methods=["GET"])
 def collections_id(collection_id):
-    collection = data.get_collection(collection_id)
+    result = data.get_collections(collection_id)[0]
 
-    links = [
-        {"href": f"{BASE_URI}collections/{collection_id}", "rel": "self"},
-        {"href": f"{BASE_URI}collections/{collection_id}/items", "rel": "items"},
-        {"href": f"{BASE_URI}collections", "rel": "parent"},
-        {"href": f"{BASE_URI}collections", "rel": "root"},
-        {"href": f"{BASE_URI}stac", "rel": "root"}
-    ]
+    collection_id = result['id']
 
-    collection['links'] = links
+    start_date = result['start_date'].isoformat()
+    end_date = None if result['end_date'] is None else result['end_date'].isoformat()
+
+    collection = {
+        'stac_version': API_VERSION,
+        'id': collection_id,
+        'title': collection_id,
+        'description': result['description'],
+        'license': None,
+        'properties': {},
+        'extent': {
+            'spatial': [
+                result['min_x'], result['min_y'], result['max_x'], result['max_y']
+            ],
+            'time': [ start_date, end_date ]
+        },
+        'links': [
+            {'href': f'{BASE_URI}collections/{collection_id}', 'rel': 'self'},
+            {'href': f'{BASE_URI}collections/{collection_id}/items', 'rel': 'items'},
+            {'href': f'{BASE_URI}collections', 'rel': 'parent'},
+            {'href': f'{BASE_URI}collections', 'rel': 'root'},
+            {'href': f'{BASE_URI}stac', 'rel': 'root'}
+        ]
+    }
 
     return jsonify(collection)
 
