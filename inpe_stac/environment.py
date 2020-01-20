@@ -1,26 +1,18 @@
 #!/usr/bin/env python3
 
-from os import environ
+from os import getenv
 from logging import DEBUG, INFO
 
-os_environ_get = environ.get
 
+BASE_URI = getenv('BASE_URI', 'http://cdsr.dpi.inpe.br/inpe-stac/')
 
-FLASK_ENV = os_environ_get('FLASK_ENV', 'production')
-
-SERVER_HOST = os_environ_get('SERVER_HOST', '0.0.0.0')
-
-try:
-    SERVER_PORT = int(os_environ_get('SERVER_PORT', '5000'))
-except ValueError:
-    SERVER_PORT = 5000
+FLASK_ENV = getenv('FLASK_ENV', 'production')
 
 # default logging level in production server
 LOGGING_LEVEL = INFO
-# default debug mode in production server
-DEBUG_MODE = False
 
 # if the application is in development mode, then change the logging level and debug mode
 if FLASK_ENV == 'development':
     LOGGING_LEVEL = DEBUG
-    DEBUG_MODE = True
+
+API_VERSION = getenv('API_VERSION', '0.7')

@@ -15,6 +15,8 @@ from flasgger import Swagger
 
 from inpe_stac import data
 
+from .environment import BASE_URI, API_VERSION
+
 
 app = Flask(__name__)
 
@@ -26,9 +28,6 @@ app.config["SWAGGER"] = {
 }
 
 swagger = Swagger(app, template_file="./spec/api/v0.7/STAC.yaml")
-
-BASE_URI = os.getenv("BASE_URI")
-API_VERSION = os.getenv("API_VERSION")
 
 
 @app.after_request
@@ -106,6 +105,10 @@ def collections():
 
 @app.route("/collections/<collection_id>", methods=["GET"])
 def collections_id(collection_id):
+    """
+    Specification: https://github.com/radiantearth/stac-spec/blob/v0.7.0/collection-spec/collection-spec.md#collection-fields
+    """
+
     result = data.get_collections(collection_id)[0]
 
     collection_id = result['id']

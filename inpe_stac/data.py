@@ -10,16 +10,8 @@ import sqlalchemy
 from sqlalchemy.sql import text
 
 from pprint import pprint
-import logging
 
-handler = logging.FileHandler('inpe_stac.log')
-handler.setFormatter(logging.Formatter(
-    '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
-))
-
-logger = logging.getLogger('data')
-logger.addHandler(handler)
-logger.setLevel(logging.DEBUG)
+from .log import logging
 
 
 def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None, type=None, ids=None, bands=None,
@@ -104,7 +96,7 @@ def get_collections(collection_id=None):
 
     # if there is a 'collection_id' key to search, then add the WHERE clause and the key to kwargs
     if collection_id is not None:
-        where = 'WHERE id = :collection_id;'
+        where = 'WHERE id = :collection_id'
         kwargs = { 'collection_id': collection_id }
 
     query = 'SELECT * FROM collection {};'.format(where)
