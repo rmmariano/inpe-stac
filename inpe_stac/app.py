@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """
 STAC API Specification
 
@@ -52,10 +54,15 @@ def index():
 
 @app.route("/conformance", methods=["GET"])
 def conformance():
-    conforms = {"conformsTo": ["http://www.opengis.net/spec/wfs-1/3.0/req/core",
-                               "http://www.opengis.net/spec/wfs-1/3.0/req/oas30",
-                               "http://www.opengis.net/spec/wfs-1/3.0/req/html",
-                               "http://www.opengis.net/spec/wfs-1/3.0/req/geojson"]}
+    conforms = {
+        "conformsTo": [
+            "http://www.opengis.net/spec/wfs-1/3.0/req/core",
+            "http://www.opengis.net/spec/wfs-1/3.0/req/oas30",
+            "http://www.opengis.net/spec/wfs-1/3.0/req/html",
+            "http://www.opengis.net/spec/wfs-1/3.0/req/geojson"
+        ]
+    }
+
     return jsonify(conforms)
 
 
@@ -99,11 +106,14 @@ def collections():
 @app.route("/collections/<collection_id>", methods=["GET"])
 def collections_id(collection_id):
     collection = data.get_collection(collection_id)
-    links = [{"href": f"{BASE_URI}collections/{collection_id}", "rel": "self"},
-             {"href": f"{BASE_URI}collections/{collection_id}/items", "rel": "items"},
-             {"href": f"{BASE_URI}collections", "rel": "parent"},
-             {"href": f"{BASE_URI}collections", "rel": "root"},
-             {"href": f"{BASE_URI}stac", "rel": "root"}]
+
+    links = [
+        {"href": f"{BASE_URI}collections/{collection_id}", "rel": "self"},
+        {"href": f"{BASE_URI}collections/{collection_id}/items", "rel": "items"},
+        {"href": f"{BASE_URI}collections", "rel": "parent"},
+        {"href": f"{BASE_URI}collections", "rel": "root"},
+        {"href": f"{BASE_URI}stac", "rel": "root"}
+    ]
 
     collection['links'] = links
 

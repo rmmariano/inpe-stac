@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 import json
 
@@ -19,6 +21,7 @@ handler.setFormatter(logging.Formatter(
 logger = logging.getLogger('data')
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
+
 
 def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None, type=None, ids=None, bands=None,
                          collections=None, page=1, limit=10):
@@ -92,38 +95,54 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
     return result
 
 
-def get_collections():
-    query = 'SELECT * FROM collection;'
+def get_collections(collection_id=None):
+    logging.warning('\n\nget_collections()')
 
-    result = do_query(query)
+    kwargs = {}
+    where = ''
+
+    # if there is a 'collection_id' key to search, then add the WHERE clause and the key to kwargs
+    if collection_id is not None:
+        where = 'WHERE id = :collection_id;'
+        kwargs = { 'collection_id': collection_id }
+
+    query = 'SELECT * FROM collection {};'.format(where)
+
+    result = do_query(query, **kwargs)
 
     if result is not None:
-        logging.warning('get_collections - {} - sql - {}'.format(len(result), query))
+        logging.warning('len(result): {} - query: {}'.format(len(result), query))
     else:
-        logging.warning('get_collections - no result - sql - {}'.format(query))
+        logging.warning('no result - query: {}'.format(query))
 
     return result
 
 
 def get_collection(collection_id):
-    result = do_query("SELECT b.Dataset as id, MIN(BL_Latitude) as miny, MIN(BL_Latitude) as minx, "\
-                      "MAX(TR_Latitude) as maxx, MAX(TR_Longitude) as maxy,"\
-                      "MIN(a.Date) as start, MAX(a.Date) as end , c.Description "\
+    logging.warning('\n\nget_collection(collection_id)')
+
+    result = do_query("SELECT b.Dataset as id, MIN(BL_Latitude) as min_y, MIN(BL_Latitude) as min_x, "\
+                      "MAX(TR_Latitude) as max_x, MAX(TR_Longitude) as max_y,"\
+                      "MIN(a.Date) as start_date, MAX(a.Date) as end_date, c.Description "\
                       "FROM Scene a, Product b, Dataset c "\
                       "WHERE a.sceneId = b.sceneId and b.Dataset = :collection_id and c.name = b.Dataset "\
                       "GROUP BY b.Dataset", collection_id=collection_id)[0]
 
+    # result = get_collections(collection_id=collection_id)
+
+    logging.warning('result: {}'.format(result))
+
     collection = {}
     collection['id'] = collection_id
-    start = result['start'].isoformat()
-    end = None if result['end'] is None else result['end'].isoformat()
+    start = result['start_date'].isoformat()
+    end = None if result['end_date'] is None else result['end_date'].isoformat()
 
     collection["stac_version"] = os.getenv("API_VERSION")
     collection["description"] = result["Description"]
 
     collection["license"] = None
     collection["properties"] = {}
-    collection["extent"] = {"spatial": [result['minx'],result['miny'],result['maxx'],result['maxy']], "time": [start, end]}
+    collection["extent"] = {"spatial": [result['min_x'],result['min_y'],result['max_x'],result['max_y']], "time": [start, end]}
     collection["properties"] = OrderedDict()
 
     return collection
