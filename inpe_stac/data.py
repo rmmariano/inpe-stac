@@ -5,6 +5,7 @@ import json
 
 from datetime import datetime
 from copy import deepcopy
+from collections import OrderedDict
 
 import sqlalchemy
 from sqlalchemy.sql import text
@@ -106,7 +107,7 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
     sql += " GROUP BY a.SceneId ORDER BY a.Date DESC"
     sql += " LIMIT :page, :limit"
 
-    logging.info('get_collection_items - query: {}'.format(query))
+    logging.info('get_collection_items - sql: {}'.format(sql))
 
     result = do_query(sql, **params)
 
