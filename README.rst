@@ -57,8 +57,8 @@ Build a new image using the Dockerfile (development or production):
 
 .. code-block:: shell
 
-        docker build -t inpe_stac -f dev.Dockerfile . --no-cache
-        docker build -t registry.dpi.inpe.br/dgi/inpe_stac:0.0.4 -f prod.Dockerfile . --no-cache
+        docker build -t inpe-cdsr-inpe_stac -f dev.Dockerfile . --no-cache
+        docker build -t registry.dpi.inpe.br/dgi/inpe_stac:0.0.5 -f prod.Dockerfile . --no-cache
 
 
 Inside ``docker-compose.yml`` file there are two services
@@ -74,23 +74,4 @@ If you have credentials, then push the image to your registry:
 
 .. code-block:: shell
 
-        docker push registry.dpi.inpe.br/dgi/inpe_stac:0.0.4
-
-
-Releases
-========
-
-.. list-table::
-   :widths: 25 25
-   :header-rows: 1
-
-   * - version
-     - description
-   * - 0.0.1
-     - First version
-   * - 0.0.2
-     - Bug related to base URL was fixed
-   * - 0.0.3
-     - Searching just Surface Reflectance scenes
-   * - 0.0.4
-     - Logs were added, database query and some bugs were fixed
+        docker push registry.dpi.inpe.br/dgi/inpe_stac:0.0.5
