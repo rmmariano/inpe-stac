@@ -237,7 +237,8 @@ def stac_search():
         page = int(request.args.get('page', 1))
         limit = int(request.args.get('limit', 10))
 
-    items = data.get_collection_items(collections=collections, bbox=bbox, time=time, ids=ids)
+    items = data.get_collection_items(collections=collections, bbox=bbox, time=time,
+                                      ids=ids, page=page, limit=limit)
 
     links = [{"href": f"{BASE_URI}collections/", "rel": "self"},
              {"href": f"{BASE_URI}collections/", "rel": "parent"},

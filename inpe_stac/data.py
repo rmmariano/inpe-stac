@@ -44,8 +44,8 @@ def get_collections(collection_id=None):
     return result
 
 
-def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None, type=None, ids=None, bands=None,
-                         collections=None, page=1, limit=10):
+def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None, type=None, ids=None,
+                         bands=None, collections=None, page=1, limit=10):
 
     logging.info('\n\nget_collection_items()')
 
