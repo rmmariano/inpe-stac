@@ -34,12 +34,12 @@ def get_collections(collection_id=None):
 
     query = 'SELECT * FROM collection {};'.format(where)
 
-    logging.info('nget_collections - query: {}'.format(query))
+    logging.info('get_collections - query: {}'.format(query))
 
     result = do_query(query, **kwargs)
 
-    logging.info('nget_collections - len(result): {}'.format(len_result(result)))
-    # logging.debug('nget_collections - result: {}'.format(result))
+    logging.info('get_collections - len(result): {}'.format(len_result(result)))
+    # logging.debug('get_collections - result: {}'.format(result))
 
     return result
 
@@ -51,8 +51,6 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
 
     params = deepcopy(locals())
     params['page'] = (page - 1) * limit
-
-    logging.info('get_collection_items - params: {}'.format(params))
 
     # sql = '''SELECT a.*, b.Dataset
     #          FROM Scene  a, Product  b, Dataset  c, Qlook d
@@ -86,18 +84,17 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
                 bbox +=  "(:max_x >= `TL_Longitude` and :max_y >=`BR_Latitude`))"
 
                 where.append("(" + bbox + ")")
-
             except:
                 raise (InvalidBoundingBoxError())
 
             if time is not None:
-
                 if "/" in time:
                     params['time_start'], end = time.split("/")
                     params['time_end'] = datetime.fromisoformat(end)
                     where.append("a.Date <= :time_end")
                 else:
                     params['time_start'] = datetime.fromisoformat(time)
+
                 where.append("a.Date >= :time_start")
 
     where = " AND ".join(where)
@@ -107,6 +104,7 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
     sql += " GROUP BY a.SceneId ORDER BY a.Date DESC"
     sql += " LIMIT :page, :limit"
 
+    logging.info('get_collection_items - params: {}'.format(params))
     logging.info('get_collection_items - sql: {}'.format(sql))
 
     result = do_query(sql, **params)
