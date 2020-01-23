@@ -22,7 +22,7 @@ def len_result(result):
 def get_collections(collection_id=None):
     logging.info('\n\nget_collections()')
 
-    logging.info('nget_collections - collection_id: {}'.format(collection_id))
+    logging.info('get_collections - collection_id: {}'.format(collection_id))
 
     kwargs = {}
     where = ''
@@ -89,11 +89,10 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
 
             if time is not None:
                 if "/" in time:
-                    params['time_start'], end = time.split("/")
-                    params['time_end'] = datetime.fromisoformat(end)
+                    params['time_start'], params['time_end'] = time.split("/")
                     where.append("a.Date <= :time_end")
                 else:
-                    params['time_start'] = datetime.fromisoformat(time)
+                    params['time_start'] = time
 
                 where.append("a.Date >= :time_start")
 
