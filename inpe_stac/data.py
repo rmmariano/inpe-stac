@@ -2,6 +2,7 @@
 
 import os
 import json
+from pprint import PrettyPrinter
 
 from datetime import datetime
 from copy import deepcopy
@@ -10,9 +11,10 @@ from collections import OrderedDict
 import sqlalchemy
 from sqlalchemy.sql import text
 
-from pprint import pprint
-
 from inpe_stac.log import logging
+
+
+pp = PrettyPrinter(indent=4)
 
 
 def len_result(result):
@@ -58,7 +60,7 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
     sql = '''SELECT a.*, b.Dataset FROM Scene a, Product b, Dataset c WHERE '''
 
     where = list()
-    where.append('a.SceneId = b.SceneId')
+    where.append('a.SceneId = b.SceneId AND b.Dataset = c.Name')
 
     if ids is not None:
         where.append("FIND_IN_SET(b.SceneId, :ids)")
@@ -132,8 +134,11 @@ def make_geojson(items, links):
         return gjson
 
     for i in items:
-        # pprint('\n\nSceneId: ', i['SceneId'])
-        # pprint('item: ', i, '\n\n')
+        # print('\n\nSceneId: ', end='')
+        # pp.pprint(i['SceneId'])
+        # print('item: ', end='')
+        # pp.pprint(i)
+        # print('\n\n')
 
         feature = OrderedDict()
 
@@ -156,10 +161,12 @@ def make_geojson(items, links):
         feature['properties'] = {}
         feature['properties']['datetime'] = datetime.fromisoformat(str(i['Date'])).isoformat()
 
-        sql = '''SELECT band, filename
-             FROM Product WHERE SceneId = :item_id
-             GROUP BY band, SceneId;
-             '''
+        sql = '''
+            SELECT band, filename
+            FROM Product
+            WHERE SceneId = :item_id
+            GROUP BY band, SceneId;
+        '''
         feature['assets'] = {}
 
         assets = do_query(sql, item_id=i['SceneId'])
