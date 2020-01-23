@@ -266,6 +266,12 @@ def stac_search():
 
     gjson = data.make_geojson(items, links=links)
 
+    gjson['meta'] = {
+        'page': page,
+        'limit': limit,
+        'returned': len(gjson['features'])
+    }
+
     elapsed_time = time_time() - start_time
 
     logging.info('/stac/search - elapsed time: {}'.format(timedelta(seconds=elapsed_time)))
