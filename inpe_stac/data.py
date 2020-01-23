@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import os
-import json
+from json import loads
 from pprint import PrettyPrinter
 
 from datetime import datetime
@@ -54,13 +54,13 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
     params = deepcopy(locals())
     params['page'] = (page - 1) * limit
 
-    # sql = '''SELECT a.*, b.Dataset
-    #          FROM Scene  a, Product  b, Dataset  c, Qlook d
-    #          WHERE '''
-    sql = '''SELECT a.*, b.Dataset FROM Scene a, Product b, Dataset c WHERE '''
+    sql = '''
+    SELECT a.*, b.Dataset, q.QLfilename, GROUP_CONCAT(CONCAT('{"band": "', b.band, '", "filename": "', b.filename,'"}')) assets
+    FROM Scene a, Product b, Dataset c, Qlook q
+    WHERE '''
 
     where = list()
-    where.append('a.SceneId = b.SceneId AND b.Dataset = c.Name')
+    where.append('a.SceneId = b.SceneId AND b.Dataset = c.Name AND b.SceneId = q.SceneId')
 
     if ids is not None:
         where.append("FIND_IN_SET(b.SceneId, :ids)")
@@ -134,8 +134,7 @@ def make_geojson(items, links):
         return gjson
 
     for i in items:
-        # print('\n\nSceneId: ', end='')
-        # pp.pprint(i['SceneId'])
+        # print('\n\nSceneId: ', i['SceneId'])
         # print('item: ', end='')
         # pp.pprint(i)
         # print('\n\n')
@@ -161,25 +160,26 @@ def make_geojson(items, links):
         feature['properties'] = {}
         feature['properties']['datetime'] = datetime.fromisoformat(str(i['Date'])).isoformat()
 
-        sql = '''
-            SELECT band, filename
-            FROM Product
-            WHERE SceneId = :item_id
-            GROUP BY band, SceneId;
-        '''
         feature['assets'] = {}
 
-        assets = do_query(sql, item_id=i['SceneId'])
-        for asset in assets:
+        # convert string json to dict json
+        i['assets'] = loads('[' + i['assets'] + ']')
+
+        for asset in i['assets']:
             feature['assets'][asset['band']] = {'href': os.getenv('TIF_ROOT') + asset['filename']}
 
-        feature['assets']['thumbnail'] = {'href': get_browse_image(i['SceneId'])}
+        feature['assets']['thumbnail'] = {'href': os.getenv('PNG_ROOT') + i['QLfilename']}
+
         feature['links'] = deepcopy(links)
         feature['links'][0]['href'] += i['Dataset'] + "/items/" + i['SceneId']
         feature['links'][1]['href'] += i['Dataset']
         feature['links'][2]['href'] += i['Dataset']
 
         features.append(feature)
+
+        # print('\nfeature: ')
+        # pp.pprint(feature)
+        # print('\n')
 
     if len(features) == 1:
         return features[0]

@@ -7,11 +7,15 @@ Specification: https://github.com/radiantearth/stac-spec/blob/master/api-spec/ap
 OpenAPI definition: https://stacspec.org/STAC-ext-api.html
 """
 
+from time import time as time_time, strftime, gmtime
+from datetime import timedelta
+
 from flask import Flask, jsonify, request, abort
 from flasgger import Swagger
 
 from inpe_stac import data
 from inpe_stac.environment import BASE_URI, API_VERSION
+from inpe_stac.log import logging
 
 
 app = Flask(__name__)
@@ -144,6 +148,8 @@ def collection_items(collection_id):
         - http://localhost:8089/inpe-stac/collections/CB4A_MUX_L2_DN/items?bbox=-68.0273437,-25.0059726,-34.9365234,0.3515602&limit=10000&time=2019-12-22T00:00:00/2020-01-22T23:59:00
     """
 
+    start_time = time_time()
+
     items = data.get_collection_items(collection_id=collection_id, bbox=request.args.get('bbox', None),
                                       time=request.args.get('time', None), type=request.args.get('type', None),
                                       page=int(request.args.get('page', 1)),
@@ -155,6 +161,10 @@ def collection_items(collection_id):
              {"href": f"{BASE_URI}stac", "rel": "root"}]
 
     gjson = data.make_geojson(items, links)
+
+    elapsed_time = time_time() - start_time
+
+    logging.info('/collections/<collection_id>/items - elapsed time: {}'.format(timedelta(seconds=elapsed_time)))
 
     return jsonify(gjson)
 
@@ -212,6 +222,10 @@ def stac():
 
 @app.route("/stac/search", methods=["GET", "POST"])
 def stac_search():
+    logging.info('\n\nstac_search()')
+
+    start_time = time_time()
+
     bbox, time, ids, collections, page, limit = None, None, None, None, None, None
     if request.method == "POST":
         if request.is_json:
@@ -251,6 +265,10 @@ def stac_search():
              {"href": f"{BASE_URI}stac", "rel": "root"}]
 
     gjson = data.make_geojson(items, links=links)
+
+    elapsed_time = time_time() - start_time
+
+    logging.info('/stac/search - elapsed time: {}'.format(timedelta(seconds=elapsed_time)))
 
     return jsonify(gjson)
 
