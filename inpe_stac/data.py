@@ -101,7 +101,8 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
 
     sql += where
 
-    sql += " GROUP BY a.SceneId ORDER BY a.Date DESC"
+    sql += " GROUP BY a.SceneId"
+    sql += " ORDER BY a.Date DESC, a.SceneId ASC"
     sql += " LIMIT :page, :limit"
 
     logging.info('get_collection_items - params: {}'.format(params))
