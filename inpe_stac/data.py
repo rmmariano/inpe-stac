@@ -157,8 +157,13 @@ def make_geojson(items, links):
         feature['geometry'] = geometry
         feature['bbox'] = bbox(feature['geometry']['coordinates'])
 
-        feature['properties'] = {}
-        feature['properties']['datetime'] = datetime.fromisoformat(str(i['Date'])).isoformat()
+        feature['properties'] = {
+            'datetime': datetime.fromisoformat(str(i['Date'])).isoformat(),
+            'path': i['Path'],
+            'row': i['Row'],
+            'satellite': i['Satellite'],
+            'sensor': i['Sensor']
+        }
 
         feature['assets'] = {}
 
