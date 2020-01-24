@@ -12,6 +12,7 @@ import sqlalchemy
 from sqlalchemy.sql import text
 
 from inpe_stac.log import logging
+from inpe_stac.decorator import log_function_header
 
 
 pp = PrettyPrinter(indent=4)
@@ -21,9 +22,8 @@ def len_result(result):
     return len(result) if result is not None else len([])
 
 
+@log_function_header
 def get_collections(collection_id=None):
-    logging.info('\n\nget_collections()')
-
     logging.info('get_collections - collection_id: {}'.format(collection_id))
 
     kwargs = {}
@@ -46,10 +46,9 @@ def get_collections(collection_id=None):
     return result
 
 
+@log_function_header
 def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None, type=None, ids=None,
                          bands=None, collections=None, page=1, limit=10):
-
-    logging.info('\n\nget_collection_items()')
 
     params = deepcopy(locals())
     params['page'] = (page - 1) * limit

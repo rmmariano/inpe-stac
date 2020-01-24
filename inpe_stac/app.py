@@ -7,15 +7,13 @@ Specification: https://github.com/radiantearth/stac-spec/blob/master/api-spec/ap
 OpenAPI definition: https://stacspec.org/STAC-ext-api.html
 """
 
-from time import time as time_time, strftime, gmtime
-from datetime import timedelta
-
 from flask import Flask, jsonify, request, abort
 from flasgger import Swagger
 
 from inpe_stac import data
 from inpe_stac.environment import BASE_URI, API_VERSION
 from inpe_stac.log import logging
+from inpe_stac.decorator import log_function_header, log_function_footer
 
 
 app = Flask(__name__)
@@ -42,6 +40,8 @@ def after_request(response):
 ##################################################
 
 @app.route("/", methods=["GET"])
+@log_function_header
+@log_function_footer
 def index():
     links = [{"href": f"{BASE_URI}", "rel": "self"},
              {"href": f"{BASE_URI}docs", "rel": "service"},
@@ -53,6 +53,8 @@ def index():
 
 
 @app.route("/conformance", methods=["GET"])
+@log_function_header
+@log_function_footer
 def conformance():
     conforms = {
         "conformsTo": [
@@ -67,6 +69,8 @@ def conformance():
 
 
 @app.route("/collections", methods=["GET"])
+@log_function_header
+@log_function_footer
 def collections():
     """
     Specification: https://github.com/radiantearth/stac-spec/blob/v0.7.0/collection-spec/collection-spec.md#collection-fields
@@ -75,6 +79,11 @@ def collections():
     result = data.get_collections()
 
     collections = {
+        'meta': {
+            # 'page': page,
+            # 'limit': limit,
+            'returned': len(result)
+        },
         'collections': []
     }
 
@@ -104,6 +113,8 @@ def collections():
 
 
 @app.route("/collections/<collection_id>", methods=["GET"])
+@log_function_header
+@log_function_footer
 def collections_id(collection_id):
     """
     Specification: https://github.com/radiantearth/stac-spec/blob/v0.7.0/collection-spec/collection-spec.md#collection-fields
@@ -142,13 +153,13 @@ def collections_id(collection_id):
 
 
 @app.route("/collections/<collection_id>/items", methods=["GET"])
+@log_function_header
+@log_function_footer
 def collection_items(collection_id):
     """
     Example of full route:
         - http://localhost:8089/inpe-stac/collections/CB4A_MUX_L2_DN/items?bbox=-68.0273437,-25.0059726,-34.9365234,0.3515602&limit=10000&time=2019-12-22T00:00:00/2020-01-22T23:59:00
     """
-
-    start_time = time_time()
 
     items = data.get_collection_items(collection_id=collection_id, bbox=request.args.get('bbox', None),
                                       time=request.args.get('time', None), type=request.args.get('type', None),
@@ -162,14 +173,12 @@ def collection_items(collection_id):
 
     gjson = data.make_geojson(items, links)
 
-    elapsed_time = time_time() - start_time
-
-    logging.info('/collections/<collection_id>/items - elapsed time: {}'.format(timedelta(seconds=elapsed_time)))
-
     return jsonify(gjson)
 
 
 @app.route("/collections/<collection_id>/items/<item_id>", methods=["GET"])
+@log_function_header
+@log_function_footer
 def items_id(collection_id, item_id):
     item = data.get_collection_items(collection_id=collection_id, item_id=item_id)
 
@@ -189,6 +198,8 @@ def items_id(collection_id, item_id):
 ##################################################
 
 @app.route("/stac", methods=["GET"])
+@log_function_header
+@log_function_footer
 def stac():
     """
     Specification: https://github.com/radiantearth/stac-spec/blob/v0.7.0/catalog-spec/catalog-spec.md#catalog-fields
@@ -221,11 +232,9 @@ def stac():
 
 
 @app.route("/stac/search", methods=["GET", "POST"])
+@log_function_header
+@log_function_footer
 def stac_search():
-    logging.info('\n\nstac_search()')
-
-    start_time = time_time()
-
     bbox, time, ids, collections, page, limit = None, None, None, None, None, None
     if request.method == "POST":
         if request.is_json:
@@ -271,10 +280,6 @@ def stac_search():
         'limit': limit,
         'returned': len(gjson['features'])
     }
-
-    elapsed_time = time_time() - start_time
-
-    logging.info('/stac/search - elapsed time: {}'.format(timedelta(seconds=elapsed_time)))
 
     return jsonify(gjson)
 
