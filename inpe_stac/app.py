@@ -115,7 +115,7 @@ def collections():
 @app.route("/collections/<collection_id>", methods=["GET"])
 @log_function_header
 @log_function_footer
-def collections_id(collection_id):
+def collections_collections_id(collection_id):
     """
     Specification: https://github.com/radiantearth/stac-spec/blob/v0.7.0/collection-spec/collection-spec.md#collection-fields
     """
@@ -162,7 +162,7 @@ def collections_id(collection_id):
 @app.route("/collections/<collection_id>/items", methods=["GET"])
 @log_function_header
 @log_function_footer
-def collection_items(collection_id):
+def collections_collections_id_items(collection_id):
     """
     Example of full route:
         - http://localhost:8089/inpe-stac/collections/CB4A_MUX_L2_DN/items?bbox=-68.0273437,-25.0059726,-34.9365234,0.3515602&limit=10000&time=2019-12-22T00:00:00/2020-01-22T23:59:00
@@ -186,7 +186,7 @@ def collection_items(collection_id):
 @app.route("/collections/<collection_id>/items/<item_id>", methods=["GET"])
 @log_function_header
 @log_function_footer
-def items_id(collection_id, item_id):
+def collections_collections_id_items_items_id(collection_id, item_id):
     item = data.get_collection_items(collection_id=collection_id, item_id=item_id)
 
     links = [{"href": f"{BASE_URI}collections/", "rel": "self"},
