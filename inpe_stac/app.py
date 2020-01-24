@@ -120,7 +120,14 @@ def collections_id(collection_id):
     Specification: https://github.com/radiantearth/stac-spec/blob/v0.7.0/collection-spec/collection-spec.md#collection-fields
     """
 
-    result = data.get_collections(collection_id)[0]
+    result = data.get_collections(collection_id)
+
+    # if there is not a result, then it returns an empty collection
+    if result is None:
+        return jsonify({})
+
+    # get the only one element inside the list
+    result = result[0]
 
     collection_id = result['id']
 
