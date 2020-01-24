@@ -168,10 +168,16 @@ def collections_collections_id_items(collection_id):
         - http://localhost:8089/inpe-stac/collections/CB4A_MUX_L2_DN/items?bbox=-68.0273437,-25.0059726,-34.9365234,0.3515602&limit=10000&time=2019-12-22T00:00:00/2020-01-22T23:59:00
     """
 
-    items = data.get_collection_items(collection_id=collection_id, bbox=request.args.get('bbox', None),
-                                      time=request.args.get('time', None), type=request.args.get('type', None),
-                                      page=int(request.args.get('page', 1)),
-                                      limit=int(request.args.get('limit', 10)))
+    params = {
+        'bbox': request.args.get('bbox', None),
+        'time': request.args.get('time', None),
+        'intersects': request.args.get('intersects', None),
+        'page': int(request.args.get('page', 1)),
+        'limit': int(request.args.get('limit', 10)),
+        'ids': request.args.get('ids', None)
+    }
+
+    items = data.get_collection_items(collection_id=collection_id, **params)
 
     links = [{"href": f"{BASE_URI}collections/", "rel": "self"},
              {"href": f"{BASE_URI}collections/", "rel": "parent"},
@@ -179,6 +185,12 @@ def collections_collections_id_items(collection_id):
              {"href": f"{BASE_URI}stac", "rel": "root"}]
 
     gjson = data.make_geojson(items, links)
+
+    gjson['meta'] = {
+        'page': params['page'],
+        'limit': params['limit'],
+        'returned': len(gjson['features'])
+    }
 
     return jsonify(gjson)
 

@@ -47,8 +47,8 @@ def get_collections(collection_id=None):
 
 
 @log_function_header
-def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None, type=None, ids=None,
-                         bands=None, collections=None, page=1, limit=10):
+def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
+                         intersects=None, page=1, limit=10, ids=None, collections=None):
 
     params = deepcopy(locals())
     params['page'] = (page - 1) * limit
