@@ -58,7 +58,7 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
     FROM Scene a, Product b, Dataset c, Qlook q
     WHERE '''
 
-    where = list()
+    where = []
     where.append('a.SceneId = b.SceneId AND b.Dataset = c.Name AND b.SceneId = q.SceneId')
 
     if ids is not None:
@@ -70,6 +70,7 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
             where.append("FIND_IN_SET(b.Dataset, :collections)")
         elif collection_id is not None:
             where.append("b.Dataset = :collection_id")
+
         if bbox is not None:
             try:
                 for x in bbox.split(','):
@@ -193,71 +194,6 @@ def make_geojson(items, links):
     return gjson
 
 
-# def make_geojson(data, totalResults, searchParams, output='json'):
-#     geojson = dict()
-#     geojson['totalResults'] = totalResults
-#     geojson['type'] = 'FeatureCollection'
-#     geojson['features'] = []
-#     base_url = os.environ.get('BASE_URL')
-#     for i in data:
-#         feature = dict()
-#         feature['type'] = 'Feature'
-
-#         geometry = dict()
-#         geometry['type'] = 'Polygon'
-#         geometry['coordinates'] = [
-#           [[i['TL_Longitude'], i['TL_Latitude']],
-#            [i['BL_Longitude'], i['BL_Latitude']],
-#            [i['BR_Longitude'], i['BR_Latitude']],
-#            [i['TR_Longitude'], i['TR_Latitude']],
-#            [i['TL_Longitude'], i['TL_Latitude']]]
-#         ]
-
-#         feature['geometry'] = geometry
-#         properties = dict()
-#         properties['title'] = i['SceneId']
-#         properties['id'] = '{}/granule.{}?uid={}'.format(base_url, output, i['SceneId'])
-#         properties['updated'] = i['IngestDate']
-#         properties['alternate'] = '{}/granule.{}?uid={}'.format(base_url, output, i['SceneId'])
-#         properties['icon'] = get_browse_image(i['SceneId'])
-#         properties['via'] = '{}/metadata/{}'.format(base_url, i['SceneId'])
-
-#         for key, value in i.items():
-#             if key != 'SceneId' and key != 'IngestDate':
-#                 properties[key.lower()] = value
-
-#         products = get_products(i['SceneId'], searchParams)
-
-#         properties['enclosure'] = []
-#         for p in products:
-#             enclosure = dict()
-
-#             enclosure['band'] = p['Band']
-#             enclosure['radiometric_processing'] = p['RadiometricProcessing']
-#             enclosure['type'] = p['Type']
-#             enclosure['url'] = os.environ.get('ENCLOSURE_BASE') + p['Filename']
-#             properties['enclosure'].append(enclosure)
-
-#         feature['properties'] = properties
-#         geojson['features'].append(feature)
-
-#     return geojson
-
-
-def get_browse_image(sceneid):
-    table = ''
-
-    sql = "SELECT QLfilename FROM Qlook WHERE SceneId = :sceneid"
-
-    result = do_query(sql, sceneid=sceneid)
-
-    if result is not None:
-        logging.warning('get_browse_image url - {}'.format(os.getenv('PNG_ROOT') + result[0]['QLfilename']))
-        return os.getenv('PNG_ROOT') + result[0]['QLfilename']
-    else:
-        return None
-
-
 def do_query(sql, **kwargs):
     connection = 'mysql://{}:{}@{}/{}'.format(os.environ.get('DB_USER'),
                                               os.environ.get('DB_PASS'),
@@ -283,11 +219,12 @@ def do_query(sql, **kwargs):
 
 def bbox(coord_list):
     box = []
+
     for i in (0, 1):
         res = sorted(coord_list[0], key=lambda x: x[i])
         box.append((res[0][i], res[-1][i]))
-    ret = [box[0][0], box[1][0], box[0][1], box[1][1]]
-    return ret
+
+    return [box[0][0], box[1][0], box[0][1], box[1][1]]
 
 
 class InvalidBoundingBoxError(Exception):

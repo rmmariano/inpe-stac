@@ -255,6 +255,7 @@ def stac():
 @log_function_footer
 def stac_search():
     bbox, time, ids, collections, page, limit = None, None, None, None, None, None
+
     if request.method == "POST":
         if request.is_json:
             request_json = request.get_json()
