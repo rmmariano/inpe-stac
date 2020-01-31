@@ -166,7 +166,7 @@ def make_geojson(items, links):
         feature['assets'] = {}
 
         # convert string json to dict json
-        i['assets'] = loads('[' + i['assets'] + ']')
+        i['assets'] = loads(i['assets'])
 
         for asset in i['assets']:
             feature['assets'][asset['band']] = {'href': os.getenv('TIF_ROOT') + asset['filename']}
