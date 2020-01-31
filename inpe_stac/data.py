@@ -58,9 +58,9 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
     where = []
 
     if ids is not None:
-        where.append('FIND_IN_SET(SceneId, :ids)')
+        where.append('FIND_IN_SET(id, :ids)')
     elif item_id is not None:
-        where.append('SceneId = :item_id')
+        where.append('id = :item_id')
     else:
         if collections is not None:
             where.append('FIND_IN_SET(collection, :collections)')
@@ -75,17 +75,17 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
                 params['min_x'], params['min_y'], params['max_x'], params['max_y'] = bbox.split(',')
 
                 # replace method removes extra espace caused by multi-line String
-                bbox = '''(
-                ((:min_x <= TR_Longitude and :min_y <= TR_Latitude)
-                or
-                (:min_x <= BR_Longitude and :min_y <= TL_Latitude))
-                and
-                ((:max_x >= BL_Longitude and :max_y >= BL_Latitude)
-                or
-                (:max_x >= TL_Longitude and :max_y >= BR_Latitude))
-                )'''.replace('                ', '')
-
-                where.append(bbox)
+                where.append(
+                    '''(
+                    ((:min_x <= TR_Longitude and :min_y <= TR_Latitude)
+                    or
+                    (:min_x <= BR_Longitude and :min_y <= TL_Latitude))
+                    and
+                    ((:max_x >= BL_Longitude and :max_y >= BL_Latitude)
+                    or
+                    (:max_x >= TL_Longitude and :max_y >= BR_Latitude))
+                    )'''.replace('                ', '')
+                )
             except:
                 raise (InvalidBoundingBoxError())
 
@@ -132,7 +132,7 @@ def make_geojson(items, links):
         return gjson
 
     for i in items:
-        # print('\n\nSceneId: ', i['SceneId'])
+        # print('\n\nid: ', i['id'])
         # print('item: ', end='')
         # pp.pprint(i)
         # print('\n\n')
@@ -140,7 +140,7 @@ def make_geojson(items, links):
         feature = OrderedDict()
 
         feature['type'] = 'Feature'
-        feature['id'] = i['SceneId']
+        feature['id'] = i['id']
         feature['collection'] = i['collection']
 
         geometry = dict()
@@ -156,11 +156,11 @@ def make_geojson(items, links):
         feature['bbox'] = bbox(feature['geometry']['coordinates'])
 
         feature['properties'] = {
-            'datetime': datetime.fromisoformat(str(i['Date'])).isoformat(),
-            'path': i['Path'],
-            'row': i['Row'],
-            'satellite': i['Satellite'],
-            'sensor': i['Sensor']
+            'datetime': datetime.fromisoformat(str(i['date'])).isoformat(),
+            'path': i['path'],
+            'row': i['row'],
+            'satellite': i['satellite'],
+            'sensor': i['sensor']
         }
 
         feature['assets'] = {}
@@ -174,7 +174,7 @@ def make_geojson(items, links):
         feature['assets']['thumbnail'] = {'href': os.getenv('PNG_ROOT') + i['thumbnail']}
 
         feature['links'] = deepcopy(links)
-        feature['links'][0]['href'] += i['collection'] + "/items/" + i['SceneId']
+        feature['links'][0]['href'] += i['collection'] + "/items/" + i['id']
         feature['links'][1]['href'] += i['collection']
         feature['links'][2]['href'] += i['collection']
 
