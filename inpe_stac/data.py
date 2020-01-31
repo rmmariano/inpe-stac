@@ -169,7 +169,7 @@ def make_geojson(items, links):
         i['assets'] = loads(i['assets'])
 
         for asset in i['assets']:
-            feature['assets'][asset['band']] = {'href': os.getenv('TIF_ROOT') + asset['filename']}
+            feature['assets'][asset['band']] = {'href': os.getenv('TIF_ROOT') + asset['href']}
 
         feature['assets']['thumbnail'] = {'href': os.getenv('PNG_ROOT') + i['thumbnail']}
 
