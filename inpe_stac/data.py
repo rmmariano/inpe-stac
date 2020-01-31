@@ -80,7 +80,7 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
                 or
                 (:min_x <= BR_Longitude and :min_y <= TL_Latitude))
                 and
-                ((:max_x >= BL_Longitude and :max_y = BL_Latitude)
+                ((:max_x >= BL_Longitude and :max_y >= BL_Latitude)
                 or
                 (:max_x >= TL_Longitude and :max_y >= BR_Latitude))
                 )'''.replace('                ', '')
