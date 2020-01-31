@@ -53,60 +53,56 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
     params = deepcopy(locals())
     params['page'] = (page - 1) * limit
 
-    sql = '''
-    SELECT a.*, b.Dataset, q.QLfilename, GROUP_CONCAT(CONCAT('{"band": "', b.band, '", "filename": "', b.filename,'"}')) assets
-    FROM Scene a, Product b, Dataset c, Qlook q
-    WHERE '''
+    sql = '\nSELECT * FROM item \nWHERE '
 
     where = []
-    where.append('a.SceneId = b.SceneId AND b.Dataset = c.Name AND b.SceneId = q.SceneId')
 
     if ids is not None:
-        where.append("FIND_IN_SET(b.SceneId, :ids)")
+        where.append('FIND_IN_SET(SceneId, :ids)')
     elif item_id is not None:
-        where.append("b.SceneId = :item_id")
+        where.append('SceneId = :item_id')
     else:
         if collections is not None:
-            where.append("FIND_IN_SET(b.Dataset, :collections)")
+            where.append('FIND_IN_SET(collection, :collections)')
         elif collection_id is not None:
-            where.append("b.Dataset = :collection_id")
+            where.append('collection = :collection_id')
 
         if bbox is not None:
             try:
                 for x in bbox.split(','):
                     float(x)
-                params['min_x'], params['min_y'], params['max_x'], params['max_y'] = bbox.split(',')
-                bbox = ""
-                bbox += "((:min_x <= `TR_Longitude` and :min_y <=`TR_Latitude`)"
-                bbox += " or "
-                bbox +=  "(:min_x <= `BR_Longitude` and :min_y <=`TL_Latitude`))"
-                bbox += " and "
-                bbox += "((:max_x >= `BL_Longitude` and :max_y=`BL_Latitude`)"
-                bbox += " or "
-                bbox +=  "(:max_x >= `TL_Longitude` and :max_y >=`BR_Latitude`))"
 
-                where.append("(" + bbox + ")")
+                params['min_x'], params['min_y'], params['max_x'], params['max_y'] = bbox.split(',')
+
+                # replace method removes extra espace caused by multi-line String
+                bbox = '''(
+                ((:min_x <= TR_Longitude and :min_y <= TR_Latitude)
+                or
+                (:min_x <= BR_Longitude and :min_y <= TL_Latitude))
+                and
+                ((:max_x >= BL_Longitude and :max_y = BL_Latitude)
+                or
+                (:max_x >= TL_Longitude and :max_y >= BR_Latitude))
+                )'''.replace('                ', '')
+
+                where.append(bbox)
             except:
                 raise (InvalidBoundingBoxError())
 
             if time is not None:
                 if "/" in time:
                     params['time_start'], params['time_end'] = time.split("/")
-                    where.append("a.Date <= :time_end")
+                    where.append("Date <= :time_end")
                 else:
                     params['time_start'] = time
 
-                where.append("a.Date >= :time_start")
+                where.append("Date >= :time_start")
 
     # add where clause to query
-    sql += " AND ".join(where)
+    sql += '\nAND '.join(where)
 
     # add other clauses to query
-    sql += '''
-    GROUP BY a.SceneId
-    ORDER BY a.Date DESC, a.SceneId ASC
-    LIMIT :page, :limit
-    '''
+    sql += '\nLIMIT :page, :limit'
 
     logging.info('get_collection_items - params: {}'.format(params))
     logging.info('get_collection_items - sql: {}'.format(sql))
@@ -145,7 +141,7 @@ def make_geojson(items, links):
 
         feature['type'] = 'Feature'
         feature['id'] = i['SceneId']
-        feature['collection'] = i['Dataset']
+        feature['collection'] = i['collection']
 
         geometry = dict()
         geometry['type'] = 'Polygon'
@@ -175,12 +171,12 @@ def make_geojson(items, links):
         for asset in i['assets']:
             feature['assets'][asset['band']] = {'href': os.getenv('TIF_ROOT') + asset['filename']}
 
-        feature['assets']['thumbnail'] = {'href': os.getenv('PNG_ROOT') + i['QLfilename']}
+        feature['assets']['thumbnail'] = {'href': os.getenv('PNG_ROOT') + i['thumbnail']}
 
         feature['links'] = deepcopy(links)
-        feature['links'][0]['href'] += i['Dataset'] + "/items/" + i['SceneId']
-        feature['links'][1]['href'] += i['Dataset']
-        feature['links'][2]['href'] += i['Dataset']
+        feature['links'][0]['href'] += i['collection'] + "/items/" + i['SceneId']
+        feature['links'][1]['href'] += i['collection']
+        feature['links'][2]['href'] += i['collection']
 
         features.append(feature)
 
