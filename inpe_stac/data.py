@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os
+from os import getenv
 from json import loads
 from pprint import PrettyPrinter
 
@@ -179,9 +179,9 @@ def make_geojson(items, links):
         i['assets'] = loads(i['assets'])
 
         for asset in i['assets']:
-            feature['assets'][asset['band']] = {'href': os.getenv('TIF_ROOT') + asset['href']}
+            feature['assets'][asset['band']] = {'href': getenv('TIF_ROOT') + asset['href']}
 
-        feature['assets']['thumbnail'] = {'href': os.getenv('PNG_ROOT') + i['thumbnail']}
+        feature['assets']['thumbnail'] = {'href': getenv('PNG_ROOT') + i['thumbnail']}
 
         feature['links'] = deepcopy(links)
         feature['links'][0]['href'] += i['collection'] + "/items/" + i['id']
@@ -203,10 +203,9 @@ def make_geojson(items, links):
 
 
 def do_query(sql, **kwargs):
-    connection = 'mysql://{}:{}@{}/{}'.format(os.environ.get('DB_USER'),
-                                              os.environ.get('DB_PASS'),
-                                              os.environ.get('DB_HOST'),
-                                              os.environ.get('DB_NAME'))
+    connection = 'mysql://{}:{}@{}/{}'.format(
+        getenv('DB_USER'), getenv('DB_PASS'), getenv('DB_HOST'), getenv('DB_NAME')
+    )
     engine = sqlalchemy.create_engine(connection)
 
     sql = text(sql)
@@ -217,7 +216,7 @@ def do_query(sql, **kwargs):
 
     engine.dispose()
 
-    result = [dict(row) for row in result]
+    result = [ dict(row) for row in result ]
 
     if len(result) > 0:
         return result

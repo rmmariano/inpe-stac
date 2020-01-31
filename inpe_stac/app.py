@@ -177,10 +177,12 @@ def collections_collections_id_items(collection_id):
 
     items, matched = data.get_collection_items(collection_id=collection_id, **params)
 
-    links = [{"href": f"{BASE_URI}collections/", "rel": "self"},
-             {"href": f"{BASE_URI}collections/", "rel": "parent"},
-             {"href": f"{BASE_URI}collections/", "rel": "collection"},
-             {"href": f"{BASE_URI}stac", "rel": "root"}]
+    links = [
+        {"href": f"{BASE_URI}collections/", "rel": "self"},
+        {"href": f"{BASE_URI}collections/", "rel": "parent"},
+        {"href": f"{BASE_URI}collections/", "rel": "collection"},
+        {"href": f"{BASE_URI}stac", "rel": "root"}
+    ]
 
     items_collection = data.make_geojson(items, links)
 
@@ -200,10 +202,12 @@ def collections_collections_id_items(collection_id):
 def collections_collections_id_items_items_id(collection_id, item_id):
     item, _ = data.get_collection_items(collection_id=collection_id, item_id=item_id)
 
-    links = [{"href": f"{BASE_URI}collections/", "rel": "self"},
-             {"href": f"{BASE_URI}collections/", "rel": "parent"},
-             {"href": f"{BASE_URI}collections/", "rel": "collection"},
-             {"href": f"{BASE_URI}stac", "rel": "root"}]
+    links = [
+        {"href": f"{BASE_URI}collections/", "rel": "self"},
+        {"href": f"{BASE_URI}collections/", "rel": "parent"},
+        {"href": f"{BASE_URI}collections/", "rel": "collection"},
+        {"href": f"{BASE_URI}stac", "rel": "root"}
+    ]
 
     gjson = data.make_geojson(item, links)
 
