@@ -163,7 +163,7 @@ def collections_collections_id(collection_id):
 def collections_collections_id_items(collection_id):
     """
     Example of full route:
-        - http://localhost:8089/inpe-stac/collections/CB4A_MUX_L2_DN/items?bbox=-68.0273437,-25.0059726,-34.9365234,0.3515602&limit=10000&time=2019-12-22T00:00:00/2020-01-22T23:59:00
+        - http://localhost:8089/inpe-stac/collections/CBERS4A_MUX_L2_DN/items?bbox=-68.0273437,-25.0059726,-34.9365234,0.3515602&limit=10000&time=2019-12-22T00:00:00/2020-01-22T23:59:00
     """
 
     params = {
@@ -182,15 +182,16 @@ def collections_collections_id_items(collection_id):
              {"href": f"{BASE_URI}collections/", "rel": "collection"},
              {"href": f"{BASE_URI}stac", "rel": "root"}]
 
-    gjson = data.make_geojson(items, links)
+    items_collection = data.make_geojson(items, links)
 
-    gjson['meta'] = {
-        'page': params['page'],
-        'limit': params['limit'],
-        'returned': len(gjson['features'])
+    items_collection['context'] = {
+        "page": params['page'],
+        "limit": params['limit'],
+        # "matched": 100000,
+        "returned": len(items_collection['features'])
     }
 
-    return jsonify(gjson)
+    return jsonify(items_collection)
 
 
 @app.route("/collections/<collection_id>/items/<item_id>", methods=["GET"])
