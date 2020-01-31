@@ -98,13 +98,15 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
 
                 where.append("a.Date >= :time_start")
 
-    where = " AND ".join(where)
+    # add where clause to query
+    sql += " AND ".join(where)
 
-    sql += where
-
-    sql += " GROUP BY a.SceneId"
-    sql += " ORDER BY a.Date DESC, a.SceneId ASC"
-    sql += " LIMIT :page, :limit"
+    # add other clauses to query
+    sql += '''
+    GROUP BY a.SceneId
+    ORDER BY a.Date DESC, a.SceneId ASC
+    LIMIT :page, :limit
+    '''
 
     logging.info('get_collection_items - params: {}'.format(params))
     logging.info('get_collection_items - sql: {}'.format(sql))
