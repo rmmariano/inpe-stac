@@ -53,7 +53,8 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
     params = deepcopy(locals())
     params['page'] = (page - 1) * limit
 
-    sql = '\nSELECT * FROM item \nWHERE '
+    query = '\nSELECT * FROM item \nWHERE '
+    query_count = '\nSELECT COUNT(id) as matched FROM item \nWHERE '
 
     where = []
 
@@ -92,27 +93,36 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
             if time is not None:
                 if "/" in time:
                     params['time_start'], params['time_end'] = time.split("/")
-                    where.append("Date <= :time_end")
+                    where.append("date <= :time_end")
                 else:
                     params['time_start'] = time
 
-                where.append("Date >= :time_start")
+                where.append("date >= :time_start")
 
-    # add where clause to query
-    sql += '\nAND '.join(where)
+    # create where and limit clauses
+    where = '\nAND '.join(where)
+    limit = '\nLIMIT :page, :limit'
 
-    # add other clauses to query
-    sql += '\nLIMIT :page, :limit'
+    # add just where clause to query, because I want to get the number of total results
+    query_count += where
+    # add where and limit clauses to query
+    query += where + limit
 
     logging.info('get_collection_items - params: {}'.format(params))
-    logging.info('get_collection_items - sql: {}'.format(sql))
+    # logging.info('get_collection_items - query_count: {}'.format(query_count))
+    logging.info('get_collection_items - query: {}'.format(query))
 
-    result = do_query(sql, **params)
+    # execute the queries
+    result_count = do_query(query_count, **params)
+    result = do_query(query, **params)
 
-    logging.info('get_collection_items - len(result): {}'.format(len_result(result)))
+    matched = result_count[0]['matched']
+
+    logging.info('get_collection_items - returned: {}'.format(len_result(result)))
+    logging.debug('get_collection_items - matched: {}'.format(matched))
     # logging.debug('get_collection_items - result: {}'.format(result))
 
-    return result
+    return result, matched
 
 
 def make_geojson(items, links):
