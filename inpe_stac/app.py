@@ -43,12 +43,15 @@ def after_request(response):
 @log_function_header
 @log_function_footer
 def index():
-    links = [{"href": f"{BASE_URI}", "rel": "self"},
-             {"href": f"{BASE_URI}docs", "rel": "service"},
-             {"href": f"{BASE_URI}conformance", "rel": "conformance"},
-             {"href": f"{BASE_URI}collections", "rel": "data"},
-             {"href": f"{BASE_URI}stac", "rel": "data"},
-             {"href": f"{BASE_URI}stac/search", "rel": "search"}]
+    links = [
+        {"href": f"{BASE_URI}", "rel": "self"},
+        {"href": f"{BASE_URI}docs", "rel": "service"},
+        {"href": f"{BASE_URI}conformance", "rel": "conformance"},
+        {"href": f"{BASE_URI}collections", "rel": "data"},
+        {"href": f"{BASE_URI}stac", "rel": "data"},
+        {"href": f"{BASE_URI}stac/search", "rel": "search"}
+    ]
+
     return jsonify(links)
 
 
@@ -79,11 +82,6 @@ def collections():
     result = data.get_collections()
 
     collections = {
-        'meta': {
-            # 'page': page,
-            # 'limit': limit,
-            'returned': len(result)
-        },
         'collections': []
     }
 
