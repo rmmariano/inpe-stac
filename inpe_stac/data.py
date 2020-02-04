@@ -170,7 +170,8 @@ def make_geojson(items, links):
             'path': i['path'],
             'row': i['row'],
             'satellite': i['satellite'],
-            'sensor': i['sensor']
+            'sensor': i['sensor'],
+            'cloud_cover': i['cloud_cover']
         }
 
         feature['assets'] = {}
