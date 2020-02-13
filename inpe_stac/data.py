@@ -119,13 +119,16 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
     matched = result_count[0]['matched']
 
     logging.info('get_collection_items - returned: {}'.format(len_result(result)))
-    logging.debug('get_collection_items - matched: {}'.format(matched))
+    logging.info('get_collection_items - matched: {}'.format(matched))
     # logging.debug('get_collection_items - result: {}'.format(result))
 
     return result, matched
 
 
 def make_geojson(items, links):
+    # logging.debug('make_geojson - items: {}'.format(items))
+    # logging.debug('make_geojson - links: {}'.format(links))
+
     if items is None:
         return {
             'type': 'FeatureCollection',
@@ -195,10 +198,9 @@ def make_geojson(items, links):
         # pp.pprint(feature)
         # print('\n')
 
-    if len(features) == 1:
-        return features[0]
-
     gjson['features'] = features
+
+    # logging.debug('make_geojson - gjson: {}'.format(gjson))
 
     return gjson
 

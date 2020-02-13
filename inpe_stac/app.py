@@ -211,6 +211,10 @@ def collections_collections_id_items_items_id(collection_id, item_id):
 
     gjson = data.make_geojson(item, links)
 
+    # I'm looking for one item by item_id, ergo just one feature will be returned,
+    # then I get this one feature in order to return it
+    gjson = gjson['features'][0]
+
     return jsonify(gjson)
 
 
