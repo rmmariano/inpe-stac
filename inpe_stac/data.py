@@ -34,7 +34,7 @@ def get_collections(collection_id=None):
         where = 'WHERE id = :collection_id'
         kwargs = { 'collection_id': collection_id }
 
-    query = 'SELECT * FROM collection {};'.format(where)
+    query = 'SELECT * FROM stac_collection {};'.format(where)
 
     logging.info('get_collections - query: {}'.format(query))
 
@@ -53,8 +53,8 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
     params = deepcopy(locals())
     params['page'] = (page - 1) * limit
 
-    query = '\nSELECT * FROM item \nWHERE '
-    query_count = '\nSELECT COUNT(id) as matched FROM item \nWHERE '
+    query = '\nSELECT * FROM stac_item \nWHERE '
+    query_count = '\nSELECT COUNT(id) as matched FROM stac_item \nWHERE '
 
     where = []
 
@@ -78,13 +78,13 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
                 # replace method removes extra espace caused by multi-line String
                 where.append(
                     '''(
-                    ((:min_x <= TR_Longitude and :min_y <= TR_Latitude)
+                    ((:min_x <= tr_longitude and :min_y <= tr_latitude)
                     or
-                    (:min_x <= BR_Longitude and :min_y <= TL_Latitude))
+                    (:min_x <= br_longitude and :min_y <= tl_latitude))
                     and
-                    ((:max_x >= BL_Longitude and :max_y >= BL_Latitude)
+                    ((:max_x >= bl_longitude and :max_y >= bl_latitude)
                     or
-                    (:max_x >= TL_Longitude and :max_y >= BR_Latitude))
+                    (:max_x >= tl_longitude and :max_y >= br_latitude))
                     )'''.replace('                ', '')
                 )
             except:
@@ -159,17 +159,17 @@ def make_geojson(items, links):
         geometry = dict()
         geometry['type'] = 'Polygon'
         geometry['coordinates'] = [
-          [[i['TL_Longitude'], i['TL_Latitude']],
-           [i['BL_Longitude'], i['BL_Latitude']],
-           [i['BR_Longitude'], i['BR_Latitude']],
-           [i['TR_Longitude'], i['TR_Latitude']],
-           [i['TL_Longitude'], i['TL_Latitude']]]
+          [[i['tl_longitude'], i['tl_latitude']],
+           [i['bl_longitude'], i['bl_latitude']],
+           [i['br_longitude'], i['br_latitude']],
+           [i['tr_longitude'], i['tr_latitude']],
+           [i['tl_longitude'], i['tl_latitude']]]
         ]
         feature['geometry'] = geometry
         feature['bbox'] = bbox(feature['geometry']['coordinates'])
 
         feature['properties'] = {
-            'datetime': datetime.fromisoformat(str(i['date'])).isoformat(),
+            'datetime': datetime.fromisoformat(str(i['center_time'])).isoformat(),
             'path': i['path'],
             'row': i['row'],
             'satellite': i['satellite'],

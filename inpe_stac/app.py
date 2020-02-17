@@ -13,7 +13,7 @@ from flasgger import Swagger
 from inpe_stac import data
 from inpe_stac.environment import BASE_URI, API_VERSION
 from inpe_stac.log import logging
-from inpe_stac.decorator import log_function_header, log_function_footer
+from inpe_stac.decorator import log_function_header, log_function_footer, catch_generic_exceptions
 
 
 app = Flask(__name__)
@@ -42,6 +42,7 @@ def after_request(response):
 @app.route("/", methods=["GET"])
 @log_function_header
 @log_function_footer
+@catch_generic_exceptions
 def index():
     links = [
         {"href": f"{BASE_URI}", "rel": "self"},
@@ -58,6 +59,7 @@ def index():
 @app.route("/conformance", methods=["GET"])
 @log_function_header
 @log_function_footer
+@catch_generic_exceptions
 def conformance():
     conforms = {
         "conformsTo": [
@@ -74,6 +76,7 @@ def conformance():
 @app.route("/collections", methods=["GET"])
 @log_function_header
 @log_function_footer
+@catch_generic_exceptions
 def collections():
     """
     Specification: https://github.com/radiantearth/stac-spec/blob/v0.7.0/collection-spec/collection-spec.md#collection-fields
@@ -113,6 +116,7 @@ def collections():
 @app.route("/collections/<collection_id>", methods=["GET"])
 @log_function_header
 @log_function_footer
+@catch_generic_exceptions
 def collections_collections_id(collection_id):
     """
     Specification: https://github.com/radiantearth/stac-spec/blob/v0.7.0/collection-spec/collection-spec.md#collection-fields
@@ -160,6 +164,7 @@ def collections_collections_id(collection_id):
 @app.route("/collections/<collection_id>/items", methods=["GET"])
 @log_function_header
 @log_function_footer
+@catch_generic_exceptions
 def collections_collections_id_items(collection_id):
     """
     Example of full route:
@@ -199,6 +204,7 @@ def collections_collections_id_items(collection_id):
 @app.route("/collections/<collection_id>/items/<item_id>", methods=["GET"])
 @log_function_header
 @log_function_footer
+@catch_generic_exceptions
 def collections_collections_id_items_items_id(collection_id, item_id):
     item, _ = data.get_collection_items(collection_id=collection_id, item_id=item_id)
 
@@ -226,6 +232,7 @@ def collections_collections_id_items_items_id(collection_id, item_id):
 @app.route("/stac", methods=["GET"])
 @log_function_header
 @log_function_footer
+@catch_generic_exceptions
 def stac():
     """
     Specification: https://github.com/radiantearth/stac-spec/blob/v0.7.0/catalog-spec/catalog-spec.md#catalog-fields
@@ -260,6 +267,7 @@ def stac():
 @app.route("/stac/search", methods=["GET", "POST"])
 @log_function_header
 @log_function_footer
+@catch_generic_exceptions
 def stac_search():
     bbox, time, ids, collections, page, limit = None, None, None, None, None, None
 
