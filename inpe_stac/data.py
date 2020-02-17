@@ -174,7 +174,8 @@ def make_geojson(items, links):
             'row': i['row'],
             'satellite': i['satellite'],
             'sensor': i['sensor'],
-            'cloud_cover': i['cloud_cover']
+            'cloud_cover': i['cloud_cover'],
+            'sync_loss': i['sync_loss']
         }
 
         feature['assets'] = {}
