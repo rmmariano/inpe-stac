@@ -183,6 +183,12 @@ def make_json_items(items, links):
         # pp.pprint(i)
         # print('\n\n')
 
+        # datetime should be the value of i['center_time'], but if its value is None,
+        # then get the value of i['date']
+        _datetime = i['center_time'] if i['center_time'] is not None else i['date']
+        # format the datetime
+        _datetime = datetime.fromisoformat(str(_datetime)).isoformat()
+
         feature = OrderedDict()
 
         feature['type'] = 'Feature'
@@ -202,7 +208,7 @@ def make_json_items(items, links):
         feature['bbox'] = bbox(feature['geometry']['coordinates'])
 
         feature['properties'] = {
-            'datetime': datetime.fromisoformat(str(i['center_time'])).isoformat(),
+            'datetime': _datetime,
             'path': i['path'],
             'row': i['row'],
             'satellite': i['satellite'],
