@@ -246,7 +246,8 @@ def stac_search():
                 'ids': request_json.get('ids', None),
                 'collections': request_json.get('collections', None),
                 'page': int(request_json.get('page', 1)),
-                'limit': int(request_json.get('limit', 10))
+                'limit': int(request_json.get('limit', 10)),
+                'query': request_json.get('query', None)
             }
 
             if params['bbox'] is not None:

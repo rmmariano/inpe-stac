@@ -49,13 +49,17 @@ def get_collections(collection_id=None):
 
 @log_function_header
 def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
-                         intersects=None, page=1, limit=10, ids=None, collections=None):
+                         intersects=None, page=1, limit=10, ids=None, collections=None,
+                         query=None):
 
     params = deepcopy(locals())
     params['page'] = (page - 1) * limit
 
-    query = '\nSELECT * FROM stac_item \nWHERE '
-    query_count = '\nSELECT COUNT(id) as matched FROM stac_item \nWHERE '
+    # query is not necessary by now, each field will be added afterwards
+    del params['query']
+
+    sql = '\nSELECT * FROM stac_item \nWHERE '
+    sql_count = '\nSELECT COUNT(id) as matched FROM stac_item \nWHERE '
 
     where = []
 
@@ -100,22 +104,48 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
 
                 where.append("date >= :time_start")
 
+    # if query is a dict, then get all available fields to search
+    # Specification: https://github.com/radiantearth/stac-spec/blob/v0.7.0/api-spec/extensions/query/README.md
+    if isinstance(query, dict):
+        for field, value in query.items():
+            # eq, neq, lt, lte, gt, gte
+            if 'eq' in value:
+                where.append('{0} = {1}'.format(field, value['eq']))
+            if 'neq' in value:
+                where.append('{0} != {1}'.format(field, value['neq']))
+            if 'lt' in value:
+                where.append('{0} < {1}'.format(field, value['lt']))
+            if 'lte' in value:
+                where.append('{0} <= {1}'.format(field, value['lte']))
+            if 'gt' in value:
+                where.append('{0} > {1}'.format(field, value['gt']))
+            if 'gte' in value:
+                where.append('{0} >= {1}'.format(field, value['gte']))
+            # startsWith, endsWith, contains
+            if 'startsWith' in value:
+                where.append('{0} LIKE \'{1}%\''.format(field, value['startsWith']))
+            if 'endsWith' in value:
+                where.append('{0} LIKE \'%{1}\''.format(field, value['endsWith']))
+            if 'contains' in value:
+                where.append('{0} LIKE \'%{1}%\''.format(field, value['contains']))
+
     # create where and limit clauses
     where = '\nAND '.join(where)
     limit = '\nLIMIT :page, :limit'
 
     # add just where clause to query, because I want to get the number of total results
-    query_count += where
+    sql_count += where
     # add where and limit clauses to query
-    query += where + limit
+    sql += where + limit
 
     logging.info('get_collection_items - params: {}'.format(params))
-    # logging.info('get_collection_items - query_count: {}'.format(query_count))
     logging.info('get_collection_items - query: {}'.format(query))
+    # logging.info('get_collection_items - sql_count: {}'.format(sql_count))
+    logging.info('get_collection_items - sql: {}'.format(sql))
 
     # execute the queries
-    result_count = do_query(query_count, **params)
-    result = do_query(query, **params)
+    result_count = do_query(sql_count, **params)
+    result = do_query(sql, **params)
 
     matched = result_count[0]['matched']
 
