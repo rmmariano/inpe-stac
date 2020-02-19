@@ -158,7 +158,7 @@ def make_json_collection(collection_result):
     return collection
 
 
-def make_geojson(items, links):
+def make_json_items(items, links):
     # logging.debug('make_geojson - items: {}'.format(items))
     # logging.debug('make_geojson - links: {}'.format(links))
 

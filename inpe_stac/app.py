@@ -11,7 +11,7 @@ from flask import Flask, jsonify, request, abort
 from flasgger import Swagger
 
 from inpe_stac.data import get_collections, get_collection_items, \
-                            make_geojson, make_json_collection
+                            make_json_items, make_json_collection
 from inpe_stac.environment import BASE_URI, API_VERSION
 from inpe_stac.log import logging
 from inpe_stac.decorator import log_function_header, log_function_footer, \
@@ -147,7 +147,7 @@ def collections_collections_id_items(collection_id):
         {"href": f"{BASE_URI}stac", "rel": "root"}
     ]
 
-    items_collection = make_geojson(items, links)
+    items_collection = make_json_items(items, links)
 
     items_collection['context'] = {
         "page": params['page'],
@@ -173,7 +173,7 @@ def collections_collections_id_items_items_id(collection_id, item_id):
         {"href": f"{BASE_URI}stac", "rel": "root"}
     ]
 
-    gjson = make_geojson(item, links)
+    gjson = make_json_items(item, links)
 
     # I'm looking for one item by item_id, ergo just one feature will be returned,
     # then I get this one feature in order to return it
@@ -268,7 +268,7 @@ def stac_search():
         {"href": f"{BASE_URI}stac", "rel": "root"}
     ]
 
-    gjson = make_geojson(items, links=links)
+    gjson = make_json_items(items, links=links)
 
     gjson['meta'] = {
         'page': page,
