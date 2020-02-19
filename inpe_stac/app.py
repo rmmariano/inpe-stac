@@ -10,10 +10,12 @@ OpenAPI definition: https://stacspec.org/STAC-ext-api.html
 from flask import Flask, jsonify, request, abort
 from flasgger import Swagger
 
-from inpe_stac import data
+from inpe_stac.data import get_collections, get_collection_items, \
+                            make_geojson, make_json_collection
 from inpe_stac.environment import BASE_URI, API_VERSION
 from inpe_stac.log import logging
-from inpe_stac.decorator import log_function_header, log_function_footer, catch_generic_exceptions
+from inpe_stac.decorator import log_function_header, log_function_footer, \
+                                catch_generic_exceptions
 
 
 app = Flask(__name__)
@@ -82,7 +84,7 @@ def collections():
     Specification: https://github.com/radiantearth/stac-spec/blob/v0.7.0/collection-spec/collection-spec.md#collection-fields
     """
 
-    result = data.get_collections()
+    result = get_collections()
 
     collections = {
         'collections': []
@@ -90,24 +92,7 @@ def collections():
 
     for collection in result:
         collections['collections'].append(
-            {
-                'stac_version': API_VERSION,
-                'id': collection['id'],
-                'title': collection['id'],
-                'description': collection['description'],
-                'license': '',
-                'extent': [],
-                'links': [
-                    {
-                        "href": f"{BASE_URI}collections/{collection['id']}",
-                        "rel": "self"
-                    },
-                    {
-                        "href": f"{BASE_URI}stac/",
-                        "rel": "root"
-                    }
-                ]
-            }
+            make_json_collection(collection)
         )
 
     return jsonify(collections)
@@ -122,41 +107,14 @@ def collections_collections_id(collection_id):
     Specification: https://github.com/radiantearth/stac-spec/blob/v0.7.0/collection-spec/collection-spec.md#collection-fields
     """
 
-    result = data.get_collections(collection_id)
+    result = get_collections(collection_id)
 
     # if there is not a result, then it returns an empty collection
     if result is None:
         return jsonify({})
 
-    # get the only one element inside the list
-    result = result[0]
-
-    collection_id = result['id']
-
-    start_date = result['start_date'].isoformat()
-    end_date = None if result['end_date'] is None else result['end_date'].isoformat()
-
-    collection = {
-        'stac_version': API_VERSION,
-        'id': collection_id,
-        'title': collection_id,
-        'description': result['description'],
-        'license': None,
-        'properties': {},
-        'extent': {
-            'spatial': [
-                result['min_x'], result['min_y'], result['max_x'], result['max_y']
-            ],
-            'time': [ start_date, end_date ]
-        },
-        'links': [
-            {'href': f'{BASE_URI}collections/{collection_id}', 'rel': 'self'},
-            {'href': f'{BASE_URI}collections/{collection_id}/items', 'rel': 'items'},
-            {'href': f'{BASE_URI}collections', 'rel': 'parent'},
-            {'href': f'{BASE_URI}collections', 'rel': 'root'},
-            {'href': f'{BASE_URI}stac', 'rel': 'root'}
-        ]
-    }
+    # get the only one element inside the list and create the GeoJSON related to collection
+    collection = make_json_collection(result[0])
 
     return jsonify(collection)
 
@@ -180,7 +138,7 @@ def collections_collections_id_items(collection_id):
         'ids': request.args.get('ids', None)
     }
 
-    items, matched = data.get_collection_items(collection_id=collection_id, **params)
+    items, matched = get_collection_items(collection_id=collection_id, **params)
 
     links = [
         {"href": f"{BASE_URI}collections/", "rel": "self"},
@@ -189,7 +147,7 @@ def collections_collections_id_items(collection_id):
         {"href": f"{BASE_URI}stac", "rel": "root"}
     ]
 
-    items_collection = data.make_geojson(items, links)
+    items_collection = make_geojson(items, links)
 
     items_collection['context'] = {
         "page": params['page'],
@@ -206,7 +164,7 @@ def collections_collections_id_items(collection_id):
 @log_function_footer
 @catch_generic_exceptions
 def collections_collections_id_items_items_id(collection_id, item_id):
-    item, _ = data.get_collection_items(collection_id=collection_id, item_id=item_id)
+    item, _ = get_collection_items(collection_id=collection_id, item_id=item_id)
 
     links = [
         {"href": f"{BASE_URI}collections/", "rel": "self"},
@@ -215,7 +173,7 @@ def collections_collections_id_items_items_id(collection_id, item_id):
         {"href": f"{BASE_URI}stac", "rel": "root"}
     ]
 
-    gjson = data.make_geojson(item, links)
+    gjson = make_geojson(item, links)
 
     # I'm looking for one item by item_id, ergo just one feature will be returned,
     # then I get this one feature in order to return it
@@ -238,7 +196,7 @@ def stac():
     Specification: https://github.com/radiantearth/stac-spec/blob/v0.7.0/catalog-spec/catalog-spec.md#catalog-fields
     """
 
-    collections = data.get_collections()
+    collections = get_collections()
 
     catalog = {
         "stac_version": API_VERSION,
@@ -300,7 +258,7 @@ def stac_search():
         page = int(request.args.get('page', 1))
         limit = int(request.args.get('limit', 10))
 
-    items, matched = data.get_collection_items(collections=collections, bbox=bbox, time=time,
+    items, matched = get_collection_items(collections=collections, bbox=bbox, time=time,
                                       ids=ids, page=page, limit=limit)
 
     links = [
@@ -310,7 +268,7 @@ def stac_search():
         {"href": f"{BASE_URI}stac", "rel": "root"}
     ]
 
-    gjson = data.make_geojson(items, links=links)
+    gjson = make_geojson(items, links=links)
 
     gjson['meta'] = {
         'page': page,

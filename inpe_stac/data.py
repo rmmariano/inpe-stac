@@ -13,6 +13,7 @@ from sqlalchemy.sql import text
 
 from inpe_stac.log import logging
 from inpe_stac.decorator import log_function_header
+from inpe_stac.environment import BASE_URI, API_VERSION
 
 
 pp = PrettyPrinter(indent=4)
@@ -123,6 +124,38 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
     # logging.debug('get_collection_items - result: {}'.format(result))
 
     return result, matched
+
+
+def make_json_collection(collection_result):
+    collection_id = collection_result['id']
+
+    start_date = collection_result['start_date'].isoformat()
+    end_date = None if collection_result['end_date'] is None else collection_result['end_date'].isoformat()
+
+    collection = {
+        'stac_version': API_VERSION,
+        'id': collection_id,
+        'title': collection_id,
+        'description': collection_result['description'],
+        'license': None,
+        'properties': {},
+        'extent': {
+            'spatial': [
+                collection_result['min_x'], collection_result['min_y'],
+                collection_result['max_x'], collection_result['max_y']
+            ],
+            'time': [ start_date, end_date ]
+        },
+        'links': [
+            {'href': f'{BASE_URI}collections/{collection_id}', 'rel': 'self'},
+            {'href': f'{BASE_URI}collections/{collection_id}/items', 'rel': 'items'},
+            {'href': f'{BASE_URI}collections', 'rel': 'parent'},
+            {'href': f'{BASE_URI}collections', 'rel': 'root'},
+            {'href': f'{BASE_URI}stac', 'rel': 'root'}
+        ]
+    }
+
+    return collection
 
 
 def make_geojson(items, links):
