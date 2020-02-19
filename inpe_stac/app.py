@@ -7,8 +7,9 @@ Specification: https://github.com/radiantearth/stac-spec/blob/master/api-spec/ap
 OpenAPI definition: https://stacspec.org/STAC-ext-api.html
 """
 
-from flask import Flask, jsonify, request, abort
+from flask import Flask, jsonify, request
 from flasgger import Swagger
+from werkzeug.exceptions import BadRequest
 
 from inpe_stac.data import get_collections, get_collection_items, \
                             make_json_items, make_json_collection
@@ -229,39 +230,48 @@ def stac():
 @log_function_footer
 @catch_generic_exceptions
 def stac_search():
-    bbox, time, ids, collections, page, limit = None, None, None, None, None, None
+    logging.info('stac_search()')
+
+    logging.info('stac_search() - method: %s', request.method)
 
     if request.method == "POST":
         if request.is_json:
             request_json = request.get_json()
 
-            bbox = request_json.get('bbox', None)
-            if bbox is not None:
-                bbox = ",".join([str(x) for x in bbox])
+            logging.info('stac_search() - request_json: %s', request_json)
 
-            time = request_json.get('time', None)
+            params = {
+                'bbox': request_json.get('bbox', None),
+                'time': request_json.get('time', None),
+                'ids': request_json.get('ids', None),
+                'collections': request_json.get('collections', None),
+                'page': int(request_json.get('page', 1)),
+                'limit': int(request_json.get('limit', 10))
+            }
 
-            ids = request_json.get('ids', None)
-            if ids is not None:
-                ids = ",".join([x for x in ids])
+            if params['bbox'] is not None:
+                params['bbox'] = ",".join([str(x) for x in params['bbox']])
 
-            collections = request_json.get('collections', None)
-
-            page = int(request_json.get('page', 1))
-            limit = int(request_json.get('limit', 10))
+            if params['ids'] is not None:
+                params['ids'] = ",".join([id for id in params['ids']])
         else:
-            abort(400, "POST Request must be an application/json")
+            raise BadRequest("POST Request must be an application/json")
 
     elif request.method == "GET":
-        bbox = request.args.get('bbox', None)
-        time = request.args.get('time', None)
-        ids = request.args.get('ids', None)
-        collections = request.args.get('collections', None)
-        page = int(request.args.get('page', 1))
-        limit = int(request.args.get('limit', 10))
+        logging.info('stac_search() - request.args: %s', request.args)
 
-    items, matched = get_collection_items(collections=collections, bbox=bbox, time=time,
-                                      ids=ids, page=page, limit=limit)
+        params = {
+            'bbox': request.args.get('bbox', None),
+            'time': request.args.get('time', None),
+            'ids': request.args.get('ids', None),
+            'collections': request.args.get('collections', None),
+            'page': int(request.args.get('page', 1)),
+            'limit': int(request.args.get('limit', 10))
+        }
+
+    logging.info('stac_search() - params: %s', params)
+
+    items, matched = get_collection_items(**params)
 
     links = [
         {"href": f"{BASE_URI}collections/", "rel": "self"},
@@ -273,8 +283,8 @@ def stac_search():
     gjson = make_json_items(items, links=links)
 
     gjson['meta'] = {
-        'page': page,
-        'limit': limit,
+        'page': params['page'],
+        'limit': params['limit'],
         "matched": matched,
         'returned': len(gjson['features'])
     }
