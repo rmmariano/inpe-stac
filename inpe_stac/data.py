@@ -3,6 +3,7 @@
 from os import getenv
 from json import loads
 from pprint import PrettyPrinter
+from werkzeug.exceptions import BadRequest
 
 from datetime import datetime
 from copy import deepcopy
@@ -95,14 +96,23 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
             except:
                 raise (InvalidBoundingBoxError())
 
-            if time is not None:
-                if "/" in time:
-                    params['time_start'], params['time_end'] = time.split("/")
-                    where.append("date <= :time_end")
-                else:
-                    params['time_start'] = time
+        if time is not None:
+            if not (isinstance(time, str) or isinstance(time, list)):
+                raise BadRequest('`time` field is not a string or list')
 
-                where.append("date >= :time_start")
+            # if time is a string, then I convert it to list by splitting it
+            if isinstance(time, str):
+                time = time.split("/")
+
+            # if there is time_start and time_end, then get them
+            if len(time) == 2:
+                params['time_start'], params['time_end'] = time
+                where.append("date <= :time_end")
+            # if there is just time_start, then get it
+            elif len(time) == 1:
+                params['time_start'] = time[0]
+
+            where.append("date >= :time_start")
 
     # if query is a dict, then get all available fields to search
     # Specification: https://github.com/radiantearth/stac-spec/blob/v0.7.0/api-spec/extensions/query/README.md
