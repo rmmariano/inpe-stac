@@ -251,14 +251,17 @@ def stac_search():
             }
 
             if params['bbox'] is not None:
-                params['bbox'] = ",".join([str(x) for x in params['bbox']])
+                params['bbox'] = ','.join([str(x) for x in params['bbox']])
 
             if params['ids'] is not None:
-                params['ids'] = ",".join([id for id in params['ids']])
-        else:
-            raise BadRequest("POST Request must be an application/json")
+                params['ids'] = ','.join([id for id in params['ids']])
 
-    elif request.method == "GET":
+            if params['collections'] is not None:
+                params['collections'] = ','.join([collection for collection in params['collections']])
+        else:
+            raise BadRequest('POST Request must be an application/json')
+
+    elif request.method == 'GET':
         logging.info('stac_search() - request.args: %s', request.args)
 
         params = {
@@ -275,10 +278,10 @@ def stac_search():
     items, matched = get_collection_items(**params)
 
     links = [
-        {"href": f"{BASE_URI}collections/", "rel": "self"},
-        {"href": f"{BASE_URI}collections/", "rel": "parent"},
-        {"href": f"{BASE_URI}collections/", "rel": "collection"},
-        {"href": f"{BASE_URI}stac", "rel": "root"}
+        {'href': f'{BASE_URI}collections/', 'rel': 'self'},
+        {'href': f'{BASE_URI}collections/', 'rel': 'parent'},
+        {'href': f'{BASE_URI}collections/', 'rel': 'collection'},
+        {'href': f'{BASE_URI}stac', 'rel': 'root'}
     ]
 
     gjson = make_json_items(items, links=links)
@@ -286,7 +289,7 @@ def stac_search():
     gjson['meta'] = {
         'page': params['page'],
         'limit': params['limit'],
-        "matched": matched,
+        'matched': matched,
         'returned': len(gjson['features'])
     }
 
