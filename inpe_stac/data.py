@@ -49,9 +49,9 @@ def get_collections(collection_id=None):
 
 
 @log_function_header
-def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
-                         intersects=None, page=1, limit=10, ids=None, collections=None,
-                         query=None):
+def __get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
+                           intersects=None, page=1, limit=10, ids=None, collections=None,
+                           query=None):
 
     params = deepcopy(locals())
     params['page'] = (page - 1) * limit
@@ -162,6 +162,19 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
     logging.info('get_collection_items - returned: {}'.format(len_result(result)))
     logging.info('get_collection_items - matched: {}'.format(matched))
     # logging.debug('get_collection_items - result: {}'.format(result))
+
+    return result, matched
+
+
+@log_function_header
+def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
+                         intersects=None, page=1, limit=10, ids=None, collections=None,
+                         query=None):
+
+    result, matched = __get_collection_items(
+        collection_id=collection_id, item_id=item_id, bbox=bbox, time=time, intersects=intersects,
+        page=page, limit=limit, ids=ids, collections=collections, query=query
+    )
 
     return result, matched
 

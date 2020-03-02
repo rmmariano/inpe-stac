@@ -256,8 +256,8 @@ def stac_search():
             if params['ids'] is not None:
                 params['ids'] = ','.join([id for id in params['ids']])
 
-            if params['collections'] is not None:
-                params['collections'] = ','.join([collection for collection in params['collections']])
+            # if params['collections'] is not None:
+            #     params['collections'] = ','.join([collection for collection in params['collections']])
         else:
             raise BadRequest('POST Request must be an application/json')
 
@@ -273,6 +273,9 @@ def stac_search():
             'limit': int(request.args.get('limit', 10))
         }
 
+        if isinstance(params['collections'], str):
+            params['collections'] = params['collections'].split(',')
+
     logging.info('stac_search() - params: %s', params)
 
     items, matched = get_collection_items(**params)
@@ -286,7 +289,7 @@ def stac_search():
 
     gjson = make_json_items(items, links=links)
 
-    gjson['meta'] = {
+    gjson['context'] = {
         'page': params['page'],
         'limit': params['limit'],
         'matched': matched,
