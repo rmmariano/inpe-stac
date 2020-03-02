@@ -49,31 +49,73 @@ def get_collections(collection_id=None):
 
 
 @log_function_header
-def __get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
-                           intersects=None, page=1, limit=10, ids=None, collections=None,
-                           query=None):
-
-    params = deepcopy(locals())
-    params['page'] = (page - 1) * limit
-
-    # query is not necessary by now, each field will be added afterwards
-    del params['query']
+def __search_stac_item_view(where, params):
+    logging.info('__search_stac_item_view()\n')
 
     sql = '\nSELECT * FROM stac_item \nWHERE '
     sql_count = '\nSELECT COUNT(id) as matched FROM stac_item \nWHERE '
 
-    where = []
+    # create where and limit clauses
+    where = '\nAND '.join(where)
+    limit = '\nLIMIT :page, :limit'
 
-    if ids is not None:
-        where.append('FIND_IN_SET(id, :ids)')
-    elif item_id is not None:
-        where.append('id = :item_id')
+    # logging.info('__search_stac_item_view() - where: {}'.format(where))
+    logging.info('__search_stac_item_view() - params: {}'.format(params))
+
+    # add just where clause to query, because I want to get the number of total results
+    sql_count += where
+    # add where and limit clauses to query
+    sql += where + limit
+
+    # logging.info('__search_stac_item_view() - sql_count: {}'.format(sql_count))
+    logging.info('__search_stac_item_view() - sql: {}'.format(sql))
+
+    # execute the queries
+    result_count = do_query(sql_count, **params)
+    result = do_query(sql, **params)
+
+    matched = result_count[0]['matched']
+
+    logging.info('__search_stac_item_view() - returned: {}'.format(len_result(result)))
+    logging.info('__search_stac_item_view() - matched: {}'.format(matched))
+    # logging.debug('__search_stac_item_view() - result: \n\n{}\n\n'.format(result))
+
+    return result, matched
+
+
+@log_function_header
+def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
+                         intersects=None, page=1, limit=10, ids=None, collections=None,
+                         query=None):
+    logging.info('get_collection_items()')
+
+    result = []
+    matched = 0
+
+    params = {
+        'page': page - 1,
+        'limit': limit
+    }
+
+    default_where = []
+
+    # search for ids
+    if item_id is not None or ids is not None:
+        if item_id is not None:
+            default_where.append('id = :item_id')
+            params['item_id'] = item_id
+        elif ids is not None:
+            default_where.append('FIND_IN_SET(id, :ids)')
+            params['ids'] = ids
+
+        logging.info('get_collection_items() - default_where: {}'.format(default_where))
+
+        __result, __matched = __search_stac_item_view(default_where, params)
+
+        result += __result
+        matched += __matched
+
     else:
-        if collections is not None:
-            where.append('FIND_IN_SET(collection, :collections)')
-        elif collection_id is not None:
-            where.append('collection = :collection_id')
-
         if bbox is not None:
             try:
                 for x in bbox.split(','):
@@ -82,7 +124,7 @@ def __get_collection_items(collection_id=None, item_id=None, bbox=None, time=Non
                 params['min_x'], params['min_y'], params['max_x'], params['max_y'] = bbox.split(',')
 
                 # replace method removes extra espace caused by multi-line String
-                where.append(
+                default_where.append(
                     '''(
                     ((:min_x <= tr_longitude and :min_y <= tr_latitude)
                     or
@@ -107,74 +149,69 @@ def __get_collection_items(collection_id=None, item_id=None, bbox=None, time=Non
             # if there is time_start and time_end, then get them
             if len(time) == 2:
                 params['time_start'], params['time_end'] = time
-                where.append("date <= :time_end")
+                default_where.append("date <= :time_end")
             # if there is just time_start, then get it
             elif len(time) == 1:
                 params['time_start'] = time[0]
 
-            where.append("date >= :time_start")
+            default_where.append("date >= :time_start")
 
-    # if query is a dict, then get all available fields to search
-    # Specification: https://github.com/radiantearth/stac-spec/blob/v0.7.0/api-spec/extensions/query/README.md
-    if isinstance(query, dict):
-        for field, value in query.items():
-            # eq, neq, lt, lte, gt, gte
-            if 'eq' in value:
-                where.append('{0} = {1}'.format(field, value['eq']))
-            if 'neq' in value:
-                where.append('{0} != {1}'.format(field, value['neq']))
-            if 'lt' in value:
-                where.append('{0} < {1}'.format(field, value['lt']))
-            if 'lte' in value:
-                where.append('{0} <= {1}'.format(field, value['lte']))
-            if 'gt' in value:
-                where.append('{0} > {1}'.format(field, value['gt']))
-            if 'gte' in value:
-                where.append('{0} >= {1}'.format(field, value['gte']))
-            # startsWith, endsWith, contains
-            if 'startsWith' in value:
-                where.append('{0} LIKE \'{1}%\''.format(field, value['startsWith']))
-            if 'endsWith' in value:
-                where.append('{0} LIKE \'%{1}\''.format(field, value['endsWith']))
-            if 'contains' in value:
-                where.append('{0} LIKE \'%{1}%\''.format(field, value['contains']))
+        logging.info('get_collection_items() - default_where: {}'.format(default_where))
 
-    # create where and limit clauses
-    where = '\nAND '.join(where)
-    limit = '\nLIMIT :page, :limit'
+        # if query is a dict, then get all available fields to search
+        # Specification: https://github.com/radiantearth/stac-spec/blob/v0.7.0/api-spec/extensions/query/README.md
+        if isinstance(query, dict):
+            for field, value in query.items():
+                # eq, neq, lt, lte, gt, gte
+                if 'eq' in value:
+                    default_where.append('{0} = {1}'.format(field, value['eq']))
+                if 'neq' in value:
+                    default_where.append('{0} != {1}'.format(field, value['neq']))
+                if 'lt' in value:
+                    default_where.append('{0} < {1}'.format(field, value['lt']))
+                if 'lte' in value:
+                    default_where.append('{0} <= {1}'.format(field, value['lte']))
+                if 'gt' in value:
+                    default_where.append('{0} > {1}'.format(field, value['gt']))
+                if 'gte' in value:
+                    default_where.append('{0} >= {1}'.format(field, value['gte']))
+                # startsWith, endsWith, contains
+                if 'startsWith' in value:
+                    default_where.append('{0} LIKE \'{1}%\''.format(field, value['startsWith']))
+                if 'endsWith' in value:
+                    default_where.append('{0} LIKE \'%{1}\''.format(field, value['endsWith']))
+                if 'contains' in value:
+                    default_where.append('{0} LIKE \'%{1}%\''.format(field, value['contains']))
 
-    # add just where clause to query, because I want to get the number of total results
-    sql_count += where
-    # add where and limit clauses to query
-    sql += where + limit
+        if collection_id is not None and isinstance(collection_id, str):
+            collections = [collection_id]
 
-    logging.info('get_collection_items - params: {}'.format(params))
-    logging.info('get_collection_items - query: {}'.format(query))
-    # logging.info('get_collection_items - sql_count: {}'.format(sql_count))
-    logging.info('get_collection_items - sql: {}'.format(sql))
+        # search for collections
+        if collections is not None:
+            logging.info('get_collection_items() - collections: {}'.format(collections))
 
-    # execute the queries
-    result_count = do_query(sql_count, **params)
-    result = do_query(sql, **params)
+            for collection_id in collections:
+                logging.info('get_collection_items() -     collection_id: {}'.format(collection_id))
 
-    matched = result_count[0]['matched']
+                where = ['collection = :collection_id']
+                params['collection_id'] = collection_id
 
-    logging.info('get_collection_items - returned: {}'.format(len_result(result)))
-    logging.info('get_collection_items - matched: {}'.format(matched))
-    # logging.debug('get_collection_items - result: {}'.format(result))
+                where += default_where
 
-    return result, matched
+                __result, __matched = __search_stac_item_view(where, params)
 
+                result += __result
+                matched += __matched
 
-@log_function_header
-def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
-                         intersects=None, page=1, limit=10, ids=None, collections=None,
-                         query=None):
+        # search for anything else
+        else:
+            __result, __matched = __search_stac_item_view(default_where, params)
 
-    result, matched = __get_collection_items(
-        collection_id=collection_id, item_id=item_id, bbox=bbox, time=time, intersects=intersects,
-        page=page, limit=limit, ids=ids, collections=collections, query=query
-    )
+            result += __result
+            matched += __matched
+
+    logging.info('get_collection_items() - matched: {}'.format(matched))
+    # logging.debug('get_collection_items() - result: \n\n{}\n\n'.format(result))
 
     return result, matched
 
