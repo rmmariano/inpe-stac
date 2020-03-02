@@ -90,6 +90,7 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
     logging.info('get_collection_items()')
 
     result = []
+    metadata_related_to_collections = []
     matched = 0
 
     params = {
@@ -203,6 +204,18 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
                 result += __result
                 matched += __matched
 
+                metadata_related_to_collections.append(
+                    {
+                        'name': collection_id,
+                        'context': {
+                            'page': params['page'],
+                            'limit': params['limit'],
+                            'matched': __matched,
+                            'returned': len(__result)
+                        }
+                    }
+                )
+
         # search for anything else
         else:
             __result, __matched = __search_stac_item_view(default_where, params)
@@ -212,8 +225,9 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
 
     logging.info('get_collection_items() - matched: {}'.format(matched))
     # logging.debug('get_collection_items() - result: \n\n{}\n\n'.format(result))
+    logging.debug('get_collection_items() - \n\nmetadata_related_to_collections: {}\n\n'.format(metadata_related_to_collections))
 
-    return result, matched
+    return result, matched, metadata_related_to_collections
 
 
 def make_json_collection(collection_result):

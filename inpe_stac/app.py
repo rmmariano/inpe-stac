@@ -141,7 +141,7 @@ def collections_collections_id_items(collection_id):
         'ids': request.args.get('ids', None)
     }
 
-    items, matched = get_collection_items(**params)
+    items, matched, _ = get_collection_items(**params)
 
     links = [
         {"href": f"{BASE_URI}collections/", "rel": "self"},
@@ -156,7 +156,8 @@ def collections_collections_id_items(collection_id):
         "page": params['page'],
         "limit": params['limit'],
         "matched": matched,
-        "returned": len(items_collection['features'])
+        "returned": len(items_collection['features']),
+        "meta": None
     }
 
     return jsonify(items_collection)
@@ -167,7 +168,7 @@ def collections_collections_id_items(collection_id):
 @log_function_footer
 @catch_generic_exceptions
 def collections_collections_id_items_items_id(collection_id, item_id):
-    item, _ = get_collection_items(collection_id=collection_id, item_id=item_id)
+    item, _, _ = get_collection_items(collection_id=collection_id, item_id=item_id)
 
     links = [
         {"href": f"{BASE_URI}collections/", "rel": "self"},
@@ -278,7 +279,7 @@ def stac_search():
 
     logging.info('stac_search() - params: %s', params)
 
-    items, matched = get_collection_items(**params)
+    items, matched, metadata_related_to_collections = get_collection_items(**params)
 
     links = [
         {'href': f'{BASE_URI}collections/', 'rel': 'self'},
@@ -293,7 +294,8 @@ def stac_search():
         'page': params['page'],
         'limit': params['limit'],
         'matched': matched,
-        'returned': len(gjson['features'])
+        'returned': len(gjson['features']),
+        'meta': metadata_related_to_collections
     }
 
     return jsonify(gjson)
