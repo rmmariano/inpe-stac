@@ -295,7 +295,7 @@ def stac_search():
         'limit': params['limit'],
         'matched': matched,
         'returned': len(gjson['features']),
-        'meta': metadata_related_to_collections
+        'meta': None if not metadata_related_to_collections else metadata_related_to_collections
     }
 
     return jsonify(gjson)

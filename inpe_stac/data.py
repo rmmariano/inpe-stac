@@ -208,8 +208,8 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
                     {
                         'name': collection_id,
                         'context': {
-                            'page': params['page'],
-                            'limit': params['limit'],
+                            'page': page,
+                            'limit': limit,
                             'matched': __matched,
                             'returned': len(__result)
                         }
@@ -225,7 +225,7 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
 
     logging.info('get_collection_items() - matched: {}'.format(matched))
     # logging.debug('get_collection_items() - result: \n\n{}\n\n'.format(result))
-    logging.debug('get_collection_items() - \n\nmetadata_related_to_collections: {}\n\n'.format(metadata_related_to_collections))
+    logging.debug('get_collection_items() - metadata: {}'.format(metadata_related_to_collections))
 
     return result, matched, metadata_related_to_collections
 
