@@ -78,6 +78,11 @@ def __search_stac_item_view(where, params):
 
     logging.info('__search_stac_item_view() - returned: {}'.format(len_result(result)))
     logging.info('__search_stac_item_view() - matched: {}'.format(matched))
+
+    # if `result` is None, then I return an empty list instead
+    if result is None:
+        result = []
+
     # logging.debug('__search_stac_item_view() - result: \n\n{}\n\n'.format(result))
 
     return result, matched
