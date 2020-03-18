@@ -168,6 +168,11 @@ def collections_collections_id_items(collection_id):
 @log_function_footer
 @catch_generic_exceptions
 def collections_collections_id_items_items_id(collection_id, item_id):
+    logging.info('collections_collections_id_items_items_id()')
+
+    logging.info('collections_collections_id_items_items_id() - collection_id: %s', collection_id)
+    logging.info('collections_collections_id_items_items_id() - item_id: %s', item_id)
+
     item, _, _ = get_collection_items(collection_id=collection_id, item_id=item_id)
 
     links = [
@@ -179,9 +184,15 @@ def collections_collections_id_items_items_id(collection_id, item_id):
 
     gjson = make_json_items(item, links)
 
-    # I'm looking for one item by item_id, ergo just one feature will be returned,
-    # then I get this one feature in order to return it
-    gjson = gjson['features'][0]
+    logging.info('collections_collections_id_items_items_id() - gjson: %s', gjson)
+
+    logging.info('collections_collections_id_items_items_id() - features: %s', gjson['features'])
+    logging.info('collections_collections_id_items_items_id() - features: %s', bool(gjson['features']))
+
+    if gjson['features']:
+        # I'm looking for one item by item_id, ergo just one feature will be returned,
+        # then I get this one feature in order to return it
+        gjson = gjson['features'][0]
 
     return jsonify(gjson)
 
