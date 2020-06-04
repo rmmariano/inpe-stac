@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 
 from os import getenv
+from functools import reduce
 from json import loads
 from pprint import PrettyPrinter
-from werkzeug.exceptions import BadRequest
 
 from datetime import datetime
 from copy import deepcopy
 from collections import OrderedDict
+from werkzeug.exceptions import BadRequest
 
 import sqlalchemy
 from sqlalchemy.sql import text
@@ -89,11 +90,13 @@ def __search_stac_item_view(where, params):
 
 
 @log_function_header
-def __search_stac_item_view__2(where, params):
+def __search_stac_item_view__2(where, params, group_by=None, order_by=None):
     logging.info('__search_stac_item_view__2()\n')
 
     # create the WHERE clause
     where = '\nAND '.join(where)
+    group_by = 'GROUP BY {}'.format(group_by) if group_by is not None else ''
+    order_by = 'ORDER BY {}'.format(order_by) if order_by is not None else ''
 
     # add where and limit clauses to query
     sql = '''
@@ -105,8 +108,8 @@ def __search_stac_item_view__2(where, params):
                 {}
         ) t
         WHERE rn >= :page AND rn <= :limit
-        ORDER BY collection;
-    '''.format(where)
+        {};
+    '''.format(where, order_by)
 
     # add just where clause to query, because I want to get the number of total results
     sql_count = '''
@@ -114,8 +117,9 @@ def __search_stac_item_view__2(where, params):
         FROM stac_item
         WHERE
             {}
-        GROUP BY collection;
-    '''.format(where)
+        {}
+        {};
+    '''.format(where, group_by, order_by)
 
     # logging.info('__search_stac_item_view__2() - where: {}'.format(where))
     logging.info('__search_stac_item_view__2() - params: {}'.format(params))
@@ -132,9 +136,18 @@ def __search_stac_item_view__2(where, params):
         result = []
 
     if result_count is None:
-        result_count = [{'collection': '', 'matched': 0}]
+        result_count = []
 
-    # logging.debug('__search_stac_item_view__2() - result: \n{}\n'.format(result))
+    if 'collections' in params:
+        for collection in params['collections'].split(','):
+            if not any(d['collection'] == collection for d in result_count):
+                result_count.append(
+                    {'collection': collection, 'matched': 0}
+                )
+
+        result_count = sorted(result_count, key=lambda key: key['collection'])
+
+    logging.debug('__search_stac_item_view__2() - result: \n{}\n'.format(result))
     logging.info('__search_stac_item_view__2() - returned: {}'.format(len_result(result)))
     logging.info('__search_stac_item_view__2() - result_count: \n{}\n'.format(result_count))
 
@@ -165,14 +178,14 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
             params['item_id'] = item_id
         elif ids is not None:
             default_where.append('FIND_IN_SET(id, :ids)')
-            params['ids'] = ids
+            params['ids'] = ','.join(ids)
 
         logging.info('get_collection_items() - default_where: {}'.format(default_where))
 
         __result, __matched = __search_stac_item_view__2(default_where, params)
 
         result += __result
-        matched += __matched[0]['matched']
+        matched += __matched[0]['matched'] if __matched else 0
 
     else:
         if bbox is not None:
@@ -249,30 +262,35 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
         if collections is not None:
             logging.info('get_collection_items() - collections: {}'.format(collections))
 
-            for collection_id in collections:
-                logging.info('get_collection_items() -     collection_id: {}'.format(collection_id))
+            # append the query at the beginning of the list
+            default_where.insert(0, 'FIND_IN_SET(collection, :collections)')
+            params['collections'] = ','.join(collections)
 
-                where = ['collection = :collection_id']
-                params['collection_id'] = collection_id
+            __result, __matched = __search_stac_item_view__2(
+                default_where, params, group_by='collection', order_by='collection'
+            )
 
-                where += default_where
+            result += __result
+            # sum all `matched` keys from the `__matched` list. initialize the first `x` with `0`
+            # source: https://stackoverflow.com/a/42453184
+            matched += reduce(lambda x, y: x + y['matched'], __matched, 0)
 
-                __result, __matched = __search_stac_item_view(where, params)
-
-                result += __result
-                matched += __matched
-
-                metadata_related_to_collections.append(
-                    {
-                        'name': collection_id,
-                        'context': {
-                            'page': page,
-                            'limit': limit,
-                            'matched': __matched,
-                            'returned': len(__result)
-                        }
+            metadata_related_to_collections = [
+                {
+                    'name': d['collection'],
+                    'context': {
+                        'page': page,
+                        'limit': limit,
+                        'matched': d['matched'],
+                        # count just the results related to the selected collection
+                        'returned': len(list(filter(
+                            lambda x: x['collection'] == d['collection'],
+                            result
+                        )))
                     }
-                )
+                # d - dictionary
+                } for d in __matched
+            ]
 
         # search for anything else
         else:
