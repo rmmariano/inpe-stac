@@ -83,9 +83,62 @@ def __search_stac_item_view(where, params):
     if result is None:
         result = []
 
-    # logging.debug('__search_stac_item_view() - result: \n\n{}\n\n'.format(result))
+    # logging.debug('__search_stac_item_view() - result: \n{}\n'.format(result))
 
     return result, matched
+
+
+@log_function_header
+def __search_stac_item_view__2(where, params):
+    logging.info('__search_stac_item_view__2()\n')
+
+    # create the WHERE clause
+    where = '\nAND '.join(where)
+
+    # add where and limit clauses to query
+    sql = '''
+        SELECT *
+        FROM (
+            SELECT *, row_number() over (partition by collection) rn
+            FROM stac_item
+            WHERE
+                {}
+        ) t
+        WHERE rn >= :page AND rn <= :limit
+        ORDER BY collection;
+    '''.format(where)
+
+    # add just where clause to query, because I want to get the number of total results
+    sql_count = '''
+        SELECT collection, COUNT(id) as matched
+        FROM stac_item
+        WHERE
+            {}
+        GROUP BY collection;
+    '''.format(where)
+
+    # logging.info('__search_stac_item_view__2() - where: {}'.format(where))
+    logging.info('__search_stac_item_view__2() - params: {}'.format(params))
+
+    logging.info('__search_stac_item_view__2() - sql_count: {}'.format(sql_count))
+    logging.info('__search_stac_item_view__2() - sql: {}'.format(sql))
+
+    # execute the queries
+    result_count = do_query(sql_count, **params)
+    result = do_query(sql, **params)
+
+    # if `result` or `result_count` is None, then I return an empty list instead
+    if result is None:
+        result = []
+
+    if result_count is None:
+        result_count = [{'collection': '', 'matched': 0}]
+
+    # logging.debug('__search_stac_item_view__2() - result: \n{}\n'.format(result))
+    logging.info('__search_stac_item_view__2() - returned: {}'.format(len_result(result)))
+    logging.info('__search_stac_item_view__2() - result_count: \n{}\n'.format(result_count))
+
+    return result, result_count
 
 
 @log_function_header
@@ -116,10 +169,10 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
 
         logging.info('get_collection_items() - default_where: {}'.format(default_where))
 
-        __result, __matched = __search_stac_item_view(default_where, params)
+        __result, __matched = __search_stac_item_view__2(default_where, params)
 
         result += __result
-        matched += __matched
+        matched += __matched[0]['matched']
 
     else:
         if bbox is not None:
