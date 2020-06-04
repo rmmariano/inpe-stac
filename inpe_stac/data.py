@@ -50,66 +50,35 @@ def get_collections(collection_id=None):
 
 
 @log_function_header
-def __search_stac_item_view(where, params):
+def __search_stac_item_view(where, params, order_by=None):
     logging.info('__search_stac_item_view()\n')
-
-    sql = '\nSELECT * FROM stac_item \nWHERE '
-    sql_count = '\nSELECT COUNT(id) as matched FROM stac_item \nWHERE '
-
-    # create where and limit clauses
-    where = '\nAND '.join(where)
-    limit = '\nLIMIT :page, :limit'
-
-    # logging.info('__search_stac_item_view() - where: {}'.format(where))
-    logging.info('__search_stac_item_view() - params: {}'.format(params))
-
-    # add just where clause to query, because I want to get the number of total results
-    sql_count += where
-    # add where and limit clauses to query
-    sql += where + limit
-
-    # logging.info('__search_stac_item_view() - sql_count: {}'.format(sql_count))
-    logging.info('__search_stac_item_view() - sql: {}'.format(sql))
-
-    # execute the queries
-    result_count = do_query(sql_count, **params)
-    result = do_query(sql, **params)
-
-    matched = result_count[0]['matched']
-
-    logging.info('__search_stac_item_view() - returned: {}'.format(len_result(result)))
-    logging.info('__search_stac_item_view() - matched: {}'.format(matched))
-
-    # if `result` is None, then I return an empty list instead
-    if result is None:
-        result = []
-
-    # logging.debug('__search_stac_item_view() - result: \n{}\n'.format(result))
-
-    return result, matched
-
-
-@log_function_header
-def __search_stac_item_view__2(where, params, group_by=None, order_by=None):
-    logging.info('__search_stac_item_view__2()\n')
 
     # create the WHERE clause
     where = '\nAND '.join(where)
-    group_by = 'GROUP BY {}'.format(group_by) if group_by is not None else ''
     order_by = 'ORDER BY {}'.format(order_by) if order_by is not None else ''
 
-    # add where and limit clauses to query
-    sql = '''
-        SELECT *
-        FROM (
-            SELECT *, row_number() over (partition by collection) rn
+    # if the user is looking for more than one collection, then I search by partition
+    if 'collections' in params:
+        sql = '''
+            SELECT *
+            FROM (
+                SELECT *, row_number() over (partition by collection) rn
+                FROM stac_item
+                WHERE
+                    {}
+            ) t
+            WHERE rn >= :page AND rn <= :limit
+            {};
+        '''.format(where, order_by)
+    # else, I search with a normal query
+    else:
+        sql = '''
+            SELECT *
             FROM stac_item
             WHERE
                 {}
-        ) t
-        WHERE rn >= :page AND rn <= :limit
-        {};
-    '''.format(where, order_by)
+            LIMIT :page, :limit
+        '''.format(where)
 
     # add just where clause to query, because I want to get the number of total results
     sql_count = '''
@@ -117,15 +86,15 @@ def __search_stac_item_view__2(where, params, group_by=None, order_by=None):
         FROM stac_item
         WHERE
             {}
-        {}
+        GROUP BY collection
         {};
-    '''.format(where, group_by, order_by)
+    '''.format(where, order_by)
 
-    # logging.info('__search_stac_item_view__2() - where: {}'.format(where))
-    logging.info('__search_stac_item_view__2() - params: {}'.format(params))
+    # logging.info('__search_stac_item_view() - where: {}'.format(where))
+    logging.info('__search_stac_item_view() - params: {}'.format(params))
 
-    logging.info('__search_stac_item_view__2() - sql_count: {}'.format(sql_count))
-    logging.info('__search_stac_item_view__2() - sql: {}'.format(sql))
+    logging.info('__search_stac_item_view() - sql_count: {}'.format(sql_count))
+    logging.info('__search_stac_item_view() - sql: {}'.format(sql))
 
     # execute the queries
     result_count = do_query(sql_count, **params)
@@ -147,9 +116,9 @@ def __search_stac_item_view__2(where, params, group_by=None, order_by=None):
 
         result_count = sorted(result_count, key=lambda key: key['collection'])
 
-    logging.debug('__search_stac_item_view__2() - result: \n{}\n'.format(result))
-    logging.info('__search_stac_item_view__2() - returned: {}'.format(len_result(result)))
-    logging.info('__search_stac_item_view__2() - result_count: \n{}\n'.format(result_count))
+    logging.debug('__search_stac_item_view() - result: \n{}\n'.format(result))
+    logging.info('__search_stac_item_view() - returned: {}'.format(len_result(result)))
+    logging.info('__search_stac_item_view() - result_count: \n{}\n'.format(result_count))
 
     return result, result_count
 
@@ -182,10 +151,10 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
 
         logging.info('get_collection_items() - default_where: {}'.format(default_where))
 
-        __result, __matched = __search_stac_item_view__2(default_where, params)
+        __result, __matched = __search_stac_item_view(default_where, params)
 
         result += __result
-        matched += __matched[0]['matched'] if __matched else 0
+        matched += reduce(lambda x, y: x + y['matched'], __matched, 0) if __matched else 0
 
     else:
         if bbox is not None:
@@ -266,8 +235,8 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
             default_where.insert(0, 'FIND_IN_SET(collection, :collections)')
             params['collections'] = ','.join(collections)
 
-            __result, __matched = __search_stac_item_view__2(
-                default_where, params, group_by='collection', order_by='collection'
+            __result, __matched = __search_stac_item_view(
+                default_where, params, order_by='collection'
             )
 
             result += __result
@@ -297,7 +266,7 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
             __result, __matched = __search_stac_item_view(default_where, params)
 
             result += __result
-            matched += __matched
+            matched += reduce(lambda x, y: x + y['matched'], __matched, 0) if __matched else 0
 
     logging.info('get_collection_items() - matched: {}'.format(matched))
     # logging.debug('get_collection_items() - result: \n\n{}\n\n'.format(result))
