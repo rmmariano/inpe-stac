@@ -50,12 +50,11 @@ def get_collections(collection_id=None):
 
 
 @log_function_header
-def __search_stac_item_view(where, params, order_by=None):
+def __search_stac_item_view(where, params):
     logging.info('__search_stac_item_view()\n')
 
     # create the WHERE clause
     where = '\nAND '.join(where)
-    order_by = 'ORDER BY {}'.format(order_by) if order_by is not None else ''
 
     # if the user is looking for more than one collection, then I search by partition
     if 'collections' in params:
@@ -68,8 +67,8 @@ def __search_stac_item_view(where, params, order_by=None):
                     {}
             ) t
             WHERE rn >= :page AND rn <= :limit
-            {};
-        '''.format(where, order_by)
+            ORDER BY collection, date DESC;
+        '''.format(where)
     # else, I search with a normal query
     else:
         sql = '''
@@ -87,8 +86,8 @@ def __search_stac_item_view(where, params, order_by=None):
         WHERE
             {}
         GROUP BY collection
-        {};
-    '''.format(where, order_by)
+        ORDER BY collection;
+    '''.format(where)
 
     # logging.info('__search_stac_item_view() - where: {}'.format(where))
     logging.info('__search_stac_item_view() - params: {}'.format(params))
@@ -235,9 +234,7 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
             default_where.insert(0, 'FIND_IN_SET(collection, :collections)')
             params['collections'] = ','.join(collections)
 
-            __result, __matched = __search_stac_item_view(
-                default_where, params, order_by='collection'
-            )
+            __result, __matched = __search_stac_item_view(default_where, params)
 
             result += __result
             # sum all `matched` keys from the `__matched` list. initialize the first `x` with `0`
