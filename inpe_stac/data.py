@@ -66,8 +66,7 @@ def __search_stac_item_view(where, params):
                 WHERE
                     {}
             ) t
-            WHERE rn >= :page AND rn <= :limit
-            ORDER BY collection, date DESC;
+            WHERE rn >= :page AND rn <= :limit;
         '''.format(where)
     # else, I search with a normal query
     else:
@@ -85,8 +84,7 @@ def __search_stac_item_view(where, params):
         FROM stac_item
         WHERE
             {}
-        GROUP BY collection
-        ORDER BY collection;
+        GROUP BY collection;
     '''.format(where)
 
     # logging.info('__search_stac_item_view() - where: {}'.format(where))
@@ -115,7 +113,7 @@ def __search_stac_item_view(where, params):
 
         result_count = sorted(result_count, key=lambda key: key['collection'])
 
-    logging.debug('__search_stac_item_view() - result: \n{}\n'.format(result))
+    # logging.debug('__search_stac_item_view() - result: \n{}\n'.format(result))
     logging.info('__search_stac_item_view() - returned: {}'.format(len_result(result)))
     logging.info('__search_stac_item_view() - result_count: \n{}\n'.format(result_count))
 
