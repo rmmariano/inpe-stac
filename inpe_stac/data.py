@@ -237,7 +237,7 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
             result += __result
             # sum all `matched` keys from the `__matched` list. initialize the first `x` with `0`
             # source: https://stackoverflow.com/a/42453184
-            matched += reduce(lambda x, y: x + y['matched'], __matched, 0)
+            matched += reduce(lambda x, y: x + y['matched'], __matched, 0) if __matched else 0
 
             metadata_related_to_collections = [
                 {
