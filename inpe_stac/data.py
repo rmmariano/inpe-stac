@@ -368,6 +368,7 @@ def make_json_items(items, links):
 
         for asset in i['assets']:
             feature['assets'][asset['band']] = {'href': getenv('TIF_ROOT') + asset['href']}
+            feature['assets'][asset['band'] + '_xml'] = {'href': getenv('TIF_ROOT') + asset['href'].replace('.tif', '.xml')}
 
         feature['assets']['thumbnail'] = {'href': getenv('PNG_ROOT') + i['thumbnail']}
 
