@@ -282,14 +282,14 @@ def make_json_collection(collection_result):
         'title': collection_id,
         'description': collection_result['description'],
         'license': None,
-        'properties': {},
         'extent': {
             'spatial': [
                 collection_result['min_x'], collection_result['min_y'],
                 collection_result['max_x'], collection_result['max_y']
             ],
-            'time': [ start_date, end_date ]
+            'temporal': [ start_date, end_date ]
         },
+        'properties': {},
         'links': [
             {'href': f'{BASE_URI}collections/{collection_id}', 'rel': 'self'},
             {'href': f'{BASE_URI}collections/{collection_id}/items', 'rel': 'items'},
