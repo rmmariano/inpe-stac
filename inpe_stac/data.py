@@ -367,10 +367,19 @@ def make_json_items(items, links):
         i['assets'] = loads(i['assets'])
 
         for asset in i['assets']:
-            feature['assets'][asset['band']] = {'href': getenv('TIF_ROOT') + asset['href']}
-            feature['assets'][asset['band'] + '_xml'] = {'href': getenv('TIF_ROOT') + asset['href'].replace('.tif', '.xml')}
+            feature['assets'][asset['band']] = {
+                'href': getenv('TIF_ROOT') + asset['href'],
+                'type': 'image/vnd.stac.geotiff'
+            }
+            feature['assets'][asset['band'] + '_xml'] = {
+                'href': getenv('TIF_ROOT') + asset['href'].replace('.tif', '.xml'),
+                'type': 'text/xml'
+            }
 
-        feature['assets']['thumbnail'] = {'href': getenv('PNG_ROOT') + i['thumbnail']}
+        feature['assets']['thumbnail'] = {
+            'href': getenv('PNG_ROOT') + i['thumbnail'],
+            'type': 'image/png'
+        }
 
         feature['links'] = deepcopy(links)
         feature['links'][0]['href'] += i['collection'] + "/items/" + i['id']
