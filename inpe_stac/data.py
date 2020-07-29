@@ -17,6 +17,8 @@ from inpe_stac.log import logging
 from inpe_stac.decorator import log_function_header
 from inpe_stac.environment import BASE_URI, API_VERSION
 
+from time import time
+
 
 pp = PrettyPrinter(indent=4)
 
