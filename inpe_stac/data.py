@@ -129,7 +129,8 @@ def __search_stac_item_view(where, params):
                 TR_Latitude tr_latitude
         FROM SceneCopy s INNER JOIN Asset a
         ON s.SceneId = a.SceneId
-        WHERE s.Deleted = 0 AND
+        WHERE s.Deleted = 0
+        HAVING
             {}
     '''.format(where)
     do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - inner join - without order by: {}\n\n')
@@ -158,7 +159,8 @@ def __search_stac_item_view(where, params):
                 TR_Latitude tr_latitude
         FROM SceneCopy s INNER JOIN Asset a
         ON s.SceneId = a.SceneId
-        WHERE s.Deleted = 0 AND
+        WHERE s.Deleted = 0
+        HAVING
             {}
         ORDER BY a.Dataset, s.Date DESC
     '''.format(where)
@@ -188,7 +190,8 @@ def __search_stac_item_view(where, params):
                 TR_Latitude tr_latitude
         FROM SceneCopy s INNER JOIN Asset a
         ON s.SceneId = a.SceneId
-        WHERE s.Deleted = 0 AND
+        WHERE s.Deleted = 0
+        HAVING
             {}
         ORDER BY a.Dataset, s.Date DESC, s.Path, s.Row
     '''.format(where)
