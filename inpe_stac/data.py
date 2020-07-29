@@ -132,6 +132,7 @@ def __search_stac_item_view(where, params):
         WHERE s.Deleted = 0
         HAVING
             {}
+        LIMIT :page, :limit
     '''.format(where)
     do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - inner join - without order by: {}')
 
@@ -163,6 +164,7 @@ def __search_stac_item_view(where, params):
         HAVING
             {}
         ORDER BY a.Dataset, s.Date DESC
+        LIMIT :page, :limit
     '''.format(where)
     do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - inner join - order by dataset and date: {}')
 
@@ -194,8 +196,19 @@ def __search_stac_item_view(where, params):
         HAVING
             {}
         ORDER BY a.Dataset, s.Date DESC, s.Path, s.Row
+        LIMIT :page, :limit
     '''.format(where)
     do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - inner join - original order by: {}\n\n')
+
+
+    __sql = '''
+        SELECT *
+        FROM _stac_item__scenecopy_asset
+        WHERE
+            {}
+        LIMIT :page, :limit
+    '''.format(where)
+    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - _stac_item__scenecopy_asset: {}\n\n')
 
 
 
