@@ -87,15 +87,78 @@ def __search_stac_item_view(where, params):
         GROUP BY collection;
     '''.format(where)
 
-    # logging.info('__search_stac_item_view() - where: {}'.format(where))
+    logging.info('__search_stac_item_view() - where: {}'.format(where))
     logging.info('__search_stac_item_view() - params: {}'.format(params))
 
     logging.info('__search_stac_item_view() - sql_count: {}'.format(sql_count))
     logging.info('__search_stac_item_view() - sql: {}'.format(sql))
 
     # execute the queries
-    result_count = do_query(sql_count, **params)
-    result = do_query(sql, **params)
+    result_count = do_query(sql_count, **params, logging_message='__search_stac_item_view() - elapsed_time - result_count: {}')
+    result = do_query(sql, **params, logging_message='__search_stac_item_view() - elapsed_time - result: {}')
+
+
+
+    ####################################################################################################
+    # TESTS
+    ####################################################################################################
+
+    __sql = '''
+        SELECT *
+        FROM stac_item
+        WHERE
+        {}
+        LIMIT :page, :limit
+    '''.format(where)
+    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - stac_item (without partition): {}\n\n')
+
+
+    __sql = '''
+        SELECT *
+            FROM Scene
+            WHERE
+
+            (
+                ((:min_x <= tr_longitude and :min_y <= tr_latitude)
+                or
+                (:min_x <= br_longitude and :min_y <= tl_latitude))
+                and
+                ((:max_x >= bl_longitude and :max_y >= bl_latitude)
+                or
+                (:max_x >= tl_longitude and :max_y >= br_latitude))
+            )
+            AND date <= :time_end
+            AND date >= :time_start
+
+            LIMIT :page, :limit
+    '''.format(where)
+    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - Scene (original, with indexes): {}')
+
+
+    __sql = '''
+        SELECT *
+            FROM SceneCopy
+            WHERE
+
+            (
+                ((:min_x <= tr_longitude and :min_y <= tr_latitude)
+                or
+                (:min_x <= br_longitude and :min_y <= tl_latitude))
+                and
+                ((:max_x >= bl_longitude and :max_y >= bl_latitude)
+                or
+                (:max_x >= tl_longitude and :max_y >= br_latitude))
+            )
+            AND date <= :time_end
+            AND date >= :time_start
+
+            LIMIT :page, :limit
+    '''.format(where)
+    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - SceneCopy (without indexes): {}\n\n')
+
+    ####################################################################################################
+
+
 
     # if `result` or `result_count` is None, then I return an empty list instead
     if result is None:
@@ -399,7 +462,9 @@ def make_json_items(items, links):
     return gjson
 
 
-def do_query(sql, **kwargs):
+def do_query(sql, logging_message='', **kwargs):
+    start_time = time()
+
     connection = 'mysql://{}:{}@{}/{}'.format(
         getenv('DB_USER'), getenv('DB_PASS'), getenv('DB_HOST'), getenv('DB_NAME')
     )
@@ -414,6 +479,10 @@ def do_query(sql, **kwargs):
     engine.dispose()
 
     result = [ dict(row) for row in result ]
+
+    elapsed_time = time() - start_time
+
+    logging.info(logging_message.format(elapsed_time))
 
     if len(result) > 0:
         return result
