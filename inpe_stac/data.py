@@ -189,14 +189,12 @@ def __search_stac_item_view(where, params):
 
     collections = params['collections'].split(',')
 
-    del params_02['collections']
-
     start_time = time()
 
     logging.info('__search_stac_item_view() - stac_item (loop) ...\n')
 
     for collection in collections:
-        params_02['collection'] = collection
+        params_02['collections'] = collection
 
         logging.info('__search_stac_item_view() - params_02: {}'.format(params_02))
 
