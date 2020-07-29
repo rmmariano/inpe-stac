@@ -106,7 +106,7 @@ def __search_stac_item_view(where, params):
     ####################################################################################################
 
 
-     __sql = '''
+    __sql = '''
         SELECT s.SceneId id,
                 a.Dataset collection,
                 s.Date date,
@@ -135,7 +135,7 @@ def __search_stac_item_view(where, params):
     do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - inner join - without order by: {}\n\n')
 
 
-     __sql = '''
+    __sql = '''
         SELECT s.SceneId id,
                 a.Dataset collection,
                 s.Date date,
@@ -165,7 +165,7 @@ def __search_stac_item_view(where, params):
     do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - inner join - order by dataset and date: {}\n\n')
 
 
-     __sql = '''
+    __sql = '''
         SELECT s.SceneId id,
                 a.Dataset collection,
                 s.Date date,
