@@ -107,6 +107,50 @@ def __search_stac_item_view(where, params):
 
     __sql = '''
         SELECT *
+            FROM stac_item
+            WHERE
+
+                FIND_IN_SET(collection, :collections)
+
+                AND
+                (
+                    ((:min_x <= tr_longitude and :min_y <= tr_latitude)
+                    or
+                    (:min_x <= br_longitude and :min_y <= tl_latitude))
+                    and
+                    ((:max_x >= bl_longitude and :max_y >= bl_latitude)
+                    or
+                    (:max_x >= tl_longitude and :max_y >= br_latitude))
+                )
+                AND date <= :time_end
+                AND date >= :time_start
+
+            LIMIT :page, :limit
+    '''.format(where)
+
+    params_02 = deepcopy(params)
+
+    start_time = time()
+
+    logging.info('__search_stac_item_view() - stac_item (loop) ...\n')
+
+    for collection in params['collections'].split(','):
+        params_02['collections'] = collection
+
+        logging.info('__search_stac_item_view() - params_02: {}'.format(params_02))
+
+        r = do_query_without_elapsed_time(__sql, **params_02)
+
+        logging.info('__search_stac_item_view() - r: {}\n\n'.format(r))
+
+    elapsed_time = time() - start_time
+
+    logging.info('__search_stac_item_view() - elapsed_time - stac_item (loop): {}\n\n'.format(elapsed_time))
+
+
+
+    __sql = '''
+        SELECT *
         FROM stac_item
         WHERE
         {}
@@ -157,54 +201,6 @@ def __search_stac_item_view(where, params):
             LIMIT :page, :limit
     '''.format(where)
     do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - SceneCopy (without indexes): {}\n\n')
-
-
-
-
-    __sql = '''
-        SELECT *
-            FROM stac_item
-            WHERE
-
-                FIND_IN_SET(collection, :collections)
-
-                AND
-                (
-                    ((:min_x <= tr_longitude and :min_y <= tr_latitude)
-                    or
-                    (:min_x <= br_longitude and :min_y <= tl_latitude))
-                    and
-                    ((:max_x >= bl_longitude and :max_y >= bl_latitude)
-                    or
-                    (:max_x >= tl_longitude and :max_y >= br_latitude))
-                )
-                AND date <= :time_end
-                AND date >= :time_start
-
-            LIMIT :page, :limit
-    '''.format(where)
-
-
-    params_02 = deepcopy(params)
-
-    collections = params['collections'].split(',')
-
-    start_time = time()
-
-    logging.info('__search_stac_item_view() - stac_item (loop) ...\n')
-
-    for collection in collections:
-        params_02['collections'] = collection
-
-        logging.info('__search_stac_item_view() - params_02: {}'.format(params_02))
-
-        r = do_query_without_elapsed_time(__sql, **params)
-
-        logging.info('__search_stac_item_view() - r: {}\n\n'.format(r))
-
-    elapsed_time = time() - start_time
-
-    logging.info('__search_stac_item_view() - elapsed_time - stac_item (loop): {}\n\n'.format(elapsed_time))
 
 
 
@@ -293,22 +289,6 @@ def __search_stac_item_view(where, params):
         ORDER BY a.Dataset, s.date DESC, s.path, s.row;
     '''.format(where)
     do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - SceneCopy (without indexes, subquery before join): {}\n\n')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
     ####################################################################################################
