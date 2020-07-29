@@ -133,7 +133,7 @@ def __search_stac_item_view(where, params):
         HAVING
             {}
     '''.format(where)
-    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - inner join - without order by: {}\n\n')
+    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - inner join - without order by: {}')
 
 
     __sql = '''
@@ -164,7 +164,7 @@ def __search_stac_item_view(where, params):
             {}
         ORDER BY a.Dataset, s.Date DESC
     '''.format(where)
-    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - inner join - order by dataset and date: {}\n\n')
+    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - inner join - order by dataset and date: {}')
 
 
     __sql = '''
