@@ -193,10 +193,16 @@ def __search_stac_item_view(where, params):
 
     start_time = time()
 
+    logging.info('__search_stac_item_view() - stac_item (loop) ...\n')
+
     for collection in collections:
         params_02['collection'] = collection
 
-        do_query_without_elapsed_time(__sql, **params)
+        logging.info('__search_stac_item_view() - params_02: {}'.format(params_02))
+
+        r = do_query_without_elapsed_time(__sql, **params)
+
+        logging.info('__search_stac_item_view() - r: {}\n\n'.format(r))
 
     elapsed_time = time() - start_time
 
