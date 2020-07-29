@@ -160,6 +160,50 @@ def __search_stac_item_view(where, params):
 
 
 
+
+    __sql = '''
+        SELECT *
+            FROM stac_item
+            WHERE
+
+                FIND_IN_SET(collection, :collections)
+
+                AND
+                (
+                    ((:min_x <= tr_longitude and :min_y <= tr_latitude)
+                    or
+                    (:min_x <= br_longitude and :min_y <= tl_latitude))
+                    and
+                    ((:max_x >= bl_longitude and :max_y >= bl_latitude)
+                    or
+                    (:max_x >= tl_longitude and :max_y >= br_latitude))
+                )
+                AND date <= :time_end
+                AND date >= :time_start
+
+            LIMIT :page, :limit
+    '''.format(where)
+
+
+    params_02 = deepcopy(params)
+
+    collections = params['collections'].split(',')
+
+    del params_02['collections']
+
+    start_time = time()
+
+    for collection in collections:
+        params_02['collection'] = collection
+
+        do_query_without_elapsed_time(__sql, **params)
+
+    elapsed_time = time() - start_time
+
+    logging.info('__search_stac_item_view() - elapsed_time - stac_item (loop): {}\n\n'.format(elapsed_time))
+
+
+
     __sql = '''
         SELECT s.*,
             a.Dataset collection,
@@ -255,46 +299,7 @@ def __search_stac_item_view(where, params):
 
 
 
-    __sql = '''
-        SELECT *
-            FROM stac_item
-            WHERE
 
-                FIND_IN_SET(collection, :collections)
-
-                AND
-                (
-                    ((:min_x <= tr_longitude and :min_y <= tr_latitude)
-                    or
-                    (:min_x <= br_longitude and :min_y <= tl_latitude))
-                    and
-                    ((:max_x >= bl_longitude and :max_y >= bl_latitude)
-                    or
-                    (:max_x >= tl_longitude and :max_y >= br_latitude))
-                )
-                AND date <= :time_end
-                AND date >= :time_start
-
-            LIMIT :page, :limit
-    '''.format(where)
-
-
-    params_02 = deepcopy(params)
-
-    collections = params['collections'].split(',')
-
-    del params_02['collections']
-
-    start_time = time()
-
-    for collection in collections:
-        params_02['collection'] = collection
-
-        do_query_without_elapsed_time(__sql, **params)
-
-    elapsed_time = time() - start_time
-
-    logging.info('__search_stac_item_view() - elapsed_time - stac_item (loop): {}\n\n'.format(elapsed_time))
 
 
 
