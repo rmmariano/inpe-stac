@@ -18,7 +18,7 @@ from inpe_stac.decorator import log_function_header
 from inpe_stac.environment import BASE_URI, API_VERSION
 
 from time import time
-
+from copy import deepcopy
 
 pp = PrettyPrinter(indent=4)
 
@@ -97,7 +97,7 @@ def __search_stac_item_view(where, params):
 
     # execute the queries
     result_count = do_query(sql_count, **params, logging_message='__search_stac_item_view() - elapsed_time - result_count: {}')
-    result = do_query(sql, **params, logging_message='__search_stac_item_view() - elapsed_time - result: {}')
+    result = do_query(sql, **params, logging_message='__search_stac_item_view() - elapsed_time - result: {}\n\n')
 
 
 
@@ -157,6 +157,62 @@ def __search_stac_item_view(where, params):
             LIMIT :page, :limit
     '''.format(where)
     do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - SceneCopy (without indexes): {}\n\n')
+
+
+
+
+
+
+
+
+
+
+    __sql = '''
+        SELECT *
+            FROM stac_item
+            WHERE
+
+                FIND_IN_SET(collection, :collections)
+
+                AND
+                (
+                    ((:min_x <= tr_longitude and :min_y <= tr_latitude)
+                    or
+                    (:min_x <= br_longitude and :min_y <= tl_latitude))
+                    and
+                    ((:max_x >= bl_longitude and :max_y >= bl_latitude)
+                    or
+                    (:max_x >= tl_longitude and :max_y >= br_latitude))
+                )
+                AND date <= :time_end
+                AND date >= :time_start
+
+            LIMIT :page, :limit
+    '''.format(where)
+
+
+    params_02 = deepcopy(params)
+
+    collections = params['collections'].split(',')
+
+    del params_02['collections']
+
+    start_time = time()
+
+    for collection in collections:
+        params_02['collection'] = collection
+
+        do_query_without_elapsed_time(__sql, **params)
+
+    elapsed_time = time() - start_time
+
+    logging.info('__search_stac_item_view() - elapsed_time - stac_item (loop): {}\n\n'.format(elapsed_time))
+
+
+
+
+
+
 
     ####################################################################################################
 
@@ -464,7 +520,7 @@ def make_json_items(items, links):
     return gjson
 
 
-def do_query(sql, logging_message='', **kwargs):
+def do_query(sql, logging_message='elapsed_time: {}', **kwargs):
     start_time = time()
 
     connection = 'mysql://{}:{}@{}/{}'.format(
@@ -485,6 +541,27 @@ def do_query(sql, logging_message='', **kwargs):
     elapsed_time = time() - start_time
 
     logging.info(logging_message.format(elapsed_time))
+
+    if len(result) > 0:
+        return result
+    else:
+        return None
+
+def do_query_without_elapsed_time(sql, **kwargs):
+    connection = 'mysql://{}:{}@{}/{}'.format(
+        getenv('DB_USER'), getenv('DB_PASS'), getenv('DB_HOST'), getenv('DB_NAME')
+    )
+    engine = sqlalchemy.create_engine(connection)
+
+    sql = text(sql)
+    engine.execute("SET @@group_concat_max_len = 1000000;")
+
+    result = engine.execute(sql, kwargs)
+    result = result.fetchall()
+
+    engine.dispose()
+
+    result = [ dict(row) for row in result ]
 
     if len(result) > 0:
         return result
