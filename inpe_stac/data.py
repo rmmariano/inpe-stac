@@ -5,13 +5,13 @@ from functools import reduce
 from json import loads
 from pprint import PrettyPrinter
 
-from datetime import datetime
-from copy import deepcopy
 from collections import OrderedDict
-from werkzeug.exceptions import BadRequest
-
+from copy import deepcopy
+from datetime import datetime, timedelta
 import sqlalchemy
 from sqlalchemy.sql import text
+from time import time
+from werkzeug.exceptions import BadRequest
 
 from inpe_stac.log import logging
 from inpe_stac.decorator import log_function_header
@@ -41,7 +41,9 @@ def get_collections(collection_id=None):
 
     logging.info('get_collections - query: {}'.format(query))
 
-    result = do_query(query, **kwargs)
+    result, elapsed_time = do_query(query, **kwargs)
+
+    logging.info('get_collections - elapsed_time - query: {}'.format(timedelta(seconds=elapsed_time)))
 
     logging.info('get_collections - len(result): {}'.format(len_result(result)))
     # logging.debug('get_collections - result: {}'.format(result))
@@ -94,8 +96,11 @@ def __search_stac_item_view(where, params):
     logging.info('__search_stac_item_view() - sql: {}'.format(sql))
 
     # execute the queries
-    result_count = do_query(sql_count, **params)
-    result = do_query(sql, **params)
+    result_count, elapsed_time = do_query(sql_count, **params)
+    logging.info('__search_stac_item_view() - elapsed_time - sql_count: {}'.format(timedelta(seconds=elapsed_time)))
+
+    result, elapsed_time = do_query(sql, **params)
+    logging.info('__search_stac_item_view() - elapsed_time - sql: {}'.format(timedelta(seconds=elapsed_time)))
 
     # if `result` or `result_count` is None, then I return an empty list instead
     if result is None:
@@ -400,6 +405,8 @@ def make_json_items(items, links):
 
 
 def do_query(sql, **kwargs):
+    start_time = time()
+
     connection = 'mysql://{}:{}@{}/{}'.format(
         getenv('DB_USER'), getenv('DB_PASS'), getenv('DB_HOST'), getenv('DB_NAME')
     )
@@ -415,10 +422,12 @@ def do_query(sql, **kwargs):
 
     result = [ dict(row) for row in result ]
 
+    elapsed_time = time() - start_time
+
     if len(result) > 0:
-        return result
+        return result, elapsed_time
     else:
-        return None
+        return None, elapsed_time
 
 
 def bbox(coord_list):
