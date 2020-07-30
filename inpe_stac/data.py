@@ -107,6 +107,29 @@ def __search_stac_item_view(where, params):
 
 
     __sql = '''
+        SELECT *
+        FROM stac_item
+        WHERE
+        {}
+        LIMIT :page, :limit
+    '''.format(where)
+    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - stac_item (without partition): {}\n\n')
+
+
+
+    __sql = '''
+        SELECT *
+        FROM _stac_item__scenecopy_asset
+        WHERE
+            {}
+        LIMIT :page, :limit
+    '''.format(where)
+    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - _stac_item__scenecopy_asset: {}\n\n')
+
+
+
+
+    __sql = '''
         SELECT s.SceneId id,
                 a.Dataset collection,
                 s.Date date,
@@ -201,76 +224,6 @@ def __search_stac_item_view(where, params):
     do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - inner join - original order by: {}\n\n')
 
 
-    __sql = '''
-        SELECT *
-        FROM _stac_item__scenecopy_asset
-        WHERE
-            {}
-        LIMIT :page, :limit
-    '''.format(where)
-    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - _stac_item__scenecopy_asset: {}\n\n')
-
-
-
-
-
-
-
-
-    # __sql = '''
-    #     SELECT *
-    #         FROM stac_item
-    #         WHERE
-
-    #             FIND_IN_SET(collection, :collections)
-
-    #             AND
-    #             (
-    #                 ((:min_x <= tr_longitude and :min_y <= tr_latitude)
-    #                 or
-    #                 (:min_x <= br_longitude and :min_y <= tl_latitude))
-    #                 and
-    #                 ((:max_x >= bl_longitude and :max_y >= bl_latitude)
-    #                 or
-    #                 (:max_x >= tl_longitude and :max_y >= br_latitude))
-    #             )
-    #             AND date <= :time_end
-    #             AND date >= :time_start
-
-    #         LIMIT :page, :limit
-    # '''.format(where)
-
-    # params_02 = deepcopy(params)
-
-    # start_time = time()
-
-    # logging.info('__search_stac_item_view() - stac_item (loop) ...\n')
-
-    # for collection in params['collections'].split(','):
-    #     params_02['collections'] = collection
-
-    #     # logging.info('__search_stac_item_view() - params_02: {}'.format(params_02))
-
-    #     r = do_query_without_elapsed_time(__sql, **params_02)
-
-    #     # logging.info('__search_stac_item_view() - r: {}\n\n'.format(r))
-
-    # elapsed_time = time() - start_time
-
-    # logging.info('__search_stac_item_view() - elapsed_time - stac_item (partition by loop): {}'.format(elapsed_time))
-
-
-
-    __sql = '''
-        SELECT *
-        FROM stac_item
-        WHERE
-        {}
-        LIMIT :page, :limit
-    '''.format(where)
-    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - stac_item (without partition): {}\n\n')
-
-
 
     __sql = '''
         SELECT *
@@ -313,94 +266,6 @@ def __search_stac_item_view(where, params):
             LIMIT :page, :limit
     '''.format(where)
     do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - SceneCopy (without indexes): {}\n\n')
-
-
-
-    # __sql = '''
-    #     SELECT s.*,
-    #         a.Dataset collection,
-    #         a.Assets assets
-    #         FROM (
-    #             SELECT SceneId id,
-    #                     Date date,
-    #                     CenterTime center_time,
-    #                     Path path,
-    #                     Row row,
-    #                     Satellite satellite,
-    #                     Sensor sensor,
-    #                     CloudCover cloud_cover,
-    #                     SyncLoss sync_loss,
-    #                     thumbnail thumbnail,
-    #                     TL_Longitude tl_longitude,
-    #                     TL_Latitude tl_latitude,
-    #                     BL_Longitude bl_longitude,
-    #                     BL_Latitude bl_latitude,
-    #                     BR_Longitude br_longitude,
-    #                     BR_Latitude br_latitude,
-    #                     TR_Longitude tr_longitude,
-    #                     TR_Latitude tr_latitude
-    #             FROM Scene
-    #             WHERE Deleted = 0 AND
-    #                 (
-    #                 ((:min_x <= TR_Longitude and :min_y <= TR_Latitude)
-    #                 or
-    #                 (:min_x <= BR_Longitude and :min_y <= TL_Latitude))
-    #                 and
-    #                 ((:max_x >= BL_Longitude and :max_y >= BL_Latitude)
-    #                 or
-    #                 (:max_x >= TL_Longitude and :max_y >= BR_Latitude))
-    #             )
-    #             AND Date <= :time_end
-    #             AND Date >= :time_start
-    #     ) s
-    #             LEFT JOIN Asset a
-    #     ON s.id = a.SceneId
-    #     ORDER BY a.Dataset, s.date DESC, s.path, s.row;
-    # '''.format(where)
-    # do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - Scene (subquery before join): {}')
-
-    # __sql = '''
-    #     SELECT s.*,
-    #         a.Dataset collection,
-    #         a.Assets assets
-    #         FROM (
-    #             SELECT SceneId id,
-    #                     Date date,
-    #                     CenterTime center_time,
-    #                     Path path,
-    #                     Row row,
-    #                     Satellite satellite,
-    #                     Sensor sensor,
-    #                     CloudCover cloud_cover,
-    #                     SyncLoss sync_loss,
-    #                     thumbnail thumbnail,
-    #                     TL_Longitude tl_longitude,
-    #                     TL_Latitude tl_latitude,
-    #                     BL_Longitude bl_longitude,
-    #                     BL_Latitude bl_latitude,
-    #                     BR_Longitude br_longitude,
-    #                     BR_Latitude br_latitude,
-    #                     TR_Longitude tr_longitude,
-    #                     TR_Latitude tr_latitude
-    #             FROM SceneCopy
-    #             WHERE Deleted = 0 AND
-    #                 (
-    #                 ((:min_x <= TR_Longitude and :min_y <= TR_Latitude)
-    #                 or
-    #                 (:min_x <= BR_Longitude and :min_y <= TL_Latitude))
-    #                 and
-    #                 ((:max_x >= BL_Longitude and :max_y >= BL_Latitude)
-    #                 or
-    #                 (:max_x >= TL_Longitude and :max_y >= BR_Latitude))
-    #             )
-    #             AND Date <= :time_end
-    #             AND Date >= :time_start
-    #     ) s
-    #             LEFT JOIN Asset a
-    #     ON s.id = a.SceneId
-    #     ORDER BY a.Dataset, s.date DESC, s.path, s.row;
-    # '''.format(where)
-    # do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - SceneCopy (without indexes, subquery before join): {}\n\n')
 
 
     ####################################################################################################
