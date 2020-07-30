@@ -192,12 +192,12 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
             # if there is time_start and time_end, then get them
             if len(time) == 2:
                 params['time_start'], params['time_end'] = time
-                default_where.append("date <= :time_end")
+                default_where.append("datetime <= :time_end")
             # if there is just time_start, then get it
             elif len(time) == 1:
                 params['time_start'] = time[0]
 
-            default_where.append("date >= :time_start")
+            default_where.append("datetime >= :time_start")
 
         logging.info('get_collection_items() - default_where: {}'.format(default_where))
 
@@ -332,12 +332,6 @@ def make_json_items(items, links):
         # pp.pprint(i)
         # print('\n\n')
 
-        # datetime should be the value of i['center_time'], but if its value is None,
-        # then get the value of i['date']
-        _datetime = i['center_time'] if i['center_time'] is not None else i['date']
-        # format the datetime
-        _datetime = datetime.fromisoformat(str(_datetime)).isoformat()
-
         feature = OrderedDict()
 
         feature['type'] = 'Feature'
@@ -357,7 +351,8 @@ def make_json_items(items, links):
         feature['bbox'] = bbox(feature['geometry']['coordinates'])
 
         feature['properties'] = {
-            'datetime': _datetime,
+            # format the datetime
+            'datetime': datetime.fromisoformat(str(i['datetime'] )).isoformat(),
             'path': i['path'],
             'row': i['row'],
             'satellite': i['satellite'],
