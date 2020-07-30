@@ -165,10 +165,31 @@ def __search_stac_item_view(where, params):
             )
             AND date <= :time_end
             AND date >= :time_start
+            ORDER BY SceneId, Date DESC
+            LIMIT :page, :limit
+    '''.format(where)
+    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - Scene (original, with indexes, with order by SceneId, Date):  {}')
+
+    __sql = '''
+        SELECT *
+            FROM Scene
+            WHERE
+
+            (
+                ((:min_x <= tr_longitude and :min_y <= tr_latitude)
+                or
+                (:min_x <= br_longitude and :min_y <= tl_latitude))
+                and
+                ((:max_x >= bl_longitude and :max_y >= bl_latitude)
+                or
+                (:max_x >= tl_longitude and :max_y >= br_latitude))
+            )
+            AND date <= :time_end
+            AND date >= :time_start
             ORDER BY SceneId, Date DESC, Path, Row
             LIMIT :page, :limit
     '''.format(where)
-    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - Scene (original, with indexes, with order by): {}\n')
+    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - Scene (original, with indexes, with original order by): {}\n')
 
 
 
@@ -191,7 +212,28 @@ def __search_stac_item_view(where, params):
 
             LIMIT :page, :limit
     '''.format(where)
-    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - SceneCopy (without indexes): {}\n\n')
+    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - SceneCopy (without indexes): {}')
+
+    __sql = '''
+        SELECT *
+            FROM SceneCopy
+            WHERE
+
+            (
+                ((:min_x <= tr_longitude and :min_y <= tr_latitude)
+                or
+                (:min_x <= br_longitude and :min_y <= tl_latitude))
+                and
+                ((:max_x >= bl_longitude and :max_y >= bl_latitude)
+                or
+                (:max_x >= tl_longitude and :max_y >= br_latitude))
+            )
+            AND date <= :time_end
+            AND date >= :time_start
+            ORDER BY SceneId, Date DESC
+            LIMIT :page, :limit
+    '''.format(where)
+    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - SceneCopy (without indexes, with order by SceneId, Date): {}')
 
     __sql = '''
         SELECT *
@@ -212,7 +254,7 @@ def __search_stac_item_view(where, params):
             ORDER BY SceneId, Date DESC, Path, Row
             LIMIT :page, :limit
     '''.format(where)
-    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - SceneCopy (without indexes, with order by): {}\n\n')
+    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - SceneCopy (without indexes, with original order by): {}\n\n')
 
 
     ####################################################################################################
