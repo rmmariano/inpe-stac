@@ -165,10 +165,10 @@ def __search_stac_item_view(where, params):
             )
             AND date <= :time_end
             AND date >= :time_start
-            ORDER BY SceneId, Date DESC
+            ORDER BY SceneId, Date DESC, Path, Row
             LIMIT :page, :limit
     '''.format(where)
-    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - Scene (original, with indexes, with order by SceneId, Date):  {}')
+    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - Scene (original, with indexes, with original order by): {}')
 
     __sql = '''
         SELECT *
@@ -186,10 +186,12 @@ def __search_stac_item_view(where, params):
             )
             AND date <= :time_end
             AND date >= :time_start
-            ORDER BY SceneId, Date DESC, Path, Row
+            ORDER BY SceneId, Date DESC
             LIMIT :page, :limit
     '''.format(where)
-    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - Scene (original, with indexes, with original order by): {}\n')
+    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - Scene (original, with indexes, with order by SceneId, Date):  {}\n')
+
+
 
 
 
@@ -230,10 +232,10 @@ def __search_stac_item_view(where, params):
             )
             AND date <= :time_end
             AND date >= :time_start
-            ORDER BY SceneId, Date DESC
+            ORDER BY SceneId, Date DESC, Path, Row
             LIMIT :page, :limit
     '''.format(where)
-    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - SceneCopy (without indexes, with order by SceneId, Date): {}')
+    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - SceneCopy (without indexes, with original order by): {}')
 
     __sql = '''
         SELECT *
@@ -251,10 +253,12 @@ def __search_stac_item_view(where, params):
             )
             AND date <= :time_end
             AND date >= :time_start
-            ORDER BY SceneId, Date DESC, Path, Row
+            ORDER BY SceneId, Date DESC
             LIMIT :page, :limit
     '''.format(where)
-    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - SceneCopy (without indexes, with original order by): {}\n\n')
+    do_query(__sql, **params, logging_message='__search_stac_item_view() - elapsed_time - SceneCopy (without indexes, with order by SceneId, Date): {}\n')
+
+
 
 
     ####################################################################################################
