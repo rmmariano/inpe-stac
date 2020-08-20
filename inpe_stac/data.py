@@ -192,12 +192,12 @@ def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
             # if there is time_start and time_end, then get them
             if len(time) == 2:
                 params['time_start'], params['time_end'] = time
-                default_where.append("datetime <= :time_end")
+                default_where.append("date <= :time_end")
             # if there is just time_start, then get it
             elif len(time) == 1:
                 params['time_start'] = time[0]
 
-            default_where.append("datetime >= :time_start")
+            default_where.append("date >= :time_start")
 
         logging.info('get_collection_items() - default_where: {}'.format(default_where))
 
