@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 
 from os import getenv
 from functools import reduce
@@ -11,11 +10,11 @@ from datetime import datetime, timedelta
 import sqlalchemy
 from sqlalchemy.sql import text
 from time import time
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, InternalServerError
 
 from inpe_stac.log import logging
 from inpe_stac.decorator import log_function_header
-from inpe_stac.environment import BASE_URI, API_VERSION
+from inpe_stac.environment import API_VERSION, BASE_URI, INPE_STAC_DELETED
 
 
 pp = PrettyPrinter(indent=4)
@@ -23,6 +22,17 @@ pp = PrettyPrinter(indent=4)
 
 def len_result(result):
     return len(result) if result is not None else len([])
+
+
+def insert_deleted_flag_to_where(where):
+    if INPE_STAC_DELETED == 0:
+        where.insert(0, 'deleted = 0')
+    elif INPE_STAC_DELETED == 1:
+        where.insert(0, 'deleted = 1')
+    else:
+        raise InternalServerError(
+            'Invalid environment variable `INPE_STAC_DELETED={}`'.format(INPE_STAC_DELETED)
+        )
 
 
 @log_function_header
@@ -53,7 +63,9 @@ def get_collections(collection_id=None):
 
 @log_function_header
 def __search_stac_item_view(where, params):
-    logging.info('__search_stac_item_view()\n')
+    logging.info('__search_stac_item_view')
+
+    insert_deleted_flag_to_where(where)
 
     # create the WHERE clause
     where = '\nAND '.join(where)
@@ -89,18 +101,18 @@ def __search_stac_item_view(where, params):
         GROUP BY collection;
     '''.format(where)
 
-    # logging.info('__search_stac_item_view() - where: {}'.format(where))
-    logging.info('__search_stac_item_view() - params: {}'.format(params))
+    # logging.info('__search_stac_item_view - where: {}'.format(where))
+    logging.info('__search_stac_item_view - params: {}'.format(params))
 
-    logging.info('__search_stac_item_view() - sql_count: {}'.format(sql_count))
-    logging.info('__search_stac_item_view() - sql: {}'.format(sql))
+    logging.info('__search_stac_item_view - sql_count: {}'.format(sql_count))
+    logging.info('__search_stac_item_view - sql: {}'.format(sql))
 
     # execute the queries
     result_count, elapsed_time = do_query(sql_count, **params)
-    logging.info('__search_stac_item_view() - elapsed_time - sql_count: {}'.format(timedelta(seconds=elapsed_time)))
+    logging.info('__search_stac_item_view - elapsed_time - sql_count: {}'.format(timedelta(seconds=elapsed_time)))
 
     result, elapsed_time = do_query(sql, **params)
-    logging.info('__search_stac_item_view() - elapsed_time - sql: {}'.format(timedelta(seconds=elapsed_time)))
+    logging.info('__search_stac_item_view - elapsed_time - sql: {}'.format(timedelta(seconds=elapsed_time)))
 
     # if `result` or `result_count` is None, then I return an empty list instead
     if result is None:
@@ -118,9 +130,9 @@ def __search_stac_item_view(where, params):
 
         result_count = sorted(result_count, key=lambda key: key['collection'])
 
-    # logging.debug('__search_stac_item_view() - result: \n{}\n'.format(result))
-    logging.info('__search_stac_item_view() - returned: {}'.format(len_result(result)))
-    logging.info('__search_stac_item_view() - result_count: \n{}\n'.format(result_count))
+    # logging.debug('__search_stac_item_view - result: \n{}\n'.format(result))
+    logging.info('__search_stac_item_view - returned: {}'.format(len_result(result)))
+    logging.info('__search_stac_item_view - result_count: \n{}\n'.format(result_count))
 
     return result, result_count
 
