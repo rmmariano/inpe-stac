@@ -57,7 +57,7 @@ Build a new image using the Dockerfile (development or production):
 
 .. code-block:: shell
 
-        docker build -t inpe-cdsr-inpe-stac -f dev.Dockerfile . --no-cache
+        docker build -t inpe-cdsr-inpe-stac -f Dockerfile . --no-cache
         docker build -t registry.dpi.inpe.br/inpe-cdsr/inpe-stac:0.0.13 -f Dockerfile . --no-cache
 
 

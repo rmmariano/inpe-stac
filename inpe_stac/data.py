@@ -31,7 +31,8 @@ def insert_deleted_flag_to_where(where):
         where.insert(0, 'deleted = 1')
     else:
         # if INPE_STAC_DELETED flag is another string,
-        # then I don't insert this flag on the search
+        # then I don't insert this flag on the search,
+        # in other words, I search all scenes
         pass
 
 
