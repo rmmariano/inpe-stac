@@ -25,14 +25,14 @@ def len_result(result):
 
 
 def insert_deleted_flag_to_where(where):
-    if INPE_STAC_DELETED == 0:
+    if INPE_STAC_DELETED == '0':
         where.insert(0, 'deleted = 0')
-    elif INPE_STAC_DELETED == 1:
+    elif INPE_STAC_DELETED == '1':
         where.insert(0, 'deleted = 1')
     else:
-        raise InternalServerError(
-            'Invalid environment variable `INPE_STAC_DELETED={}`'.format(INPE_STAC_DELETED)
-        )
+        # if INPE_STAC_DELETED flag is another string,
+        # then I don't insert this flag on the search
+        pass
 
 
 @log_function_header

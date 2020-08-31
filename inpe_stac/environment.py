@@ -9,7 +9,7 @@ BASE_URI = getenv('BASE_URI', 'http://www2.dgi.inpe.br/inpe-stac/')
 
 FLASK_ENV = getenv('FLASK_ENV', 'production')
 
-INPE_STAC_DELETED = int(getenv('INPE_STAC_DELETED', 0))
+INPE_STAC_DELETED = getenv('INPE_STAC_DELETED', '0')
 
 # default logging level in production server
 LOGGING_LEVEL = INFO
