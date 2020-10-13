@@ -1,134 +1,328 @@
-import os
-import json
 
-from datetime import datetime
+from os import getenv
+from functools import reduce
+from json import loads
+from pprint import PrettyPrinter
+
 from collections import OrderedDict
 from copy import deepcopy
-
+from datetime import datetime, timedelta
 import sqlalchemy
 from sqlalchemy.sql import text
+from time import time
+from werkzeug.exceptions import BadRequest, InternalServerError
 
-from pprint import pprint
-import logging
+from inpe_stac.log import logging
+from inpe_stac.decorator import log_function_header
+from inpe_stac.environment import API_VERSION, BASE_URI, INPE_STAC_DELETED
 
-handler = logging.FileHandler('inpe_stac.log')
-handler.setFormatter(logging.Formatter(
-    '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
-))
 
-logger = logging.getLogger('data')
-logger.addHandler(handler)
-logger.setLevel(logging.DEBUG)
+pp = PrettyPrinter(indent=4)
 
-def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None, type=None, ids=None, bands=None,
-                         collections=None, page=1, limit=10):
 
-    params = deepcopy(locals())
-    params['page'] = (page - 1) * limit
+def len_result(result):
+    return len(result) if result is not None else len([])
 
-    logging.warning('get_collection_items - params - {}'.format(params))
 
-    # sql = '''SELECT a.*, b.Dataset
-    #          FROM Scene  a, Product  b, Dataset  c, Qlook d
-    #          WHERE '''
-    sql = '''SELECT a.*, b.Dataset FROM Scene  a, Product  b, Dataset  c WHERE '''
-
-    where = list()
-
-    where.append('a.SceneId = b.SceneId')
-
-    if ids is not None:
-        where.append("FIND_IN_SET(b.SceneId, :ids)")
-    elif item_id is not None:
-        where.append("b.SceneId = :item_id")
+def insert_deleted_flag_to_where(where):
+    if INPE_STAC_DELETED == '0':
+        where.insert(0, 'deleted = 0')
+    elif INPE_STAC_DELETED == '1':
+        where.insert(0, 'deleted = 1')
     else:
-        if collections is not None:
-            where.append("FIND_IN_SET(b.Dataset, :collections)")
-        elif collection_id is not None:
-            where.append("b.Dataset = :collection_id")
+        # if INPE_STAC_DELETED flag is another string,
+        # then I don't insert this flag on the search
+        pass
+
+
+@log_function_header
+def get_collections(collection_id=None):
+    logging.info('get_collections - collection_id: {}'.format(collection_id))
+
+    kwargs = {}
+    where = ''
+
+    # if there is a 'collection_id' key to search, then add the WHERE clause and the key to kwargs
+    if collection_id is not None:
+        where = 'WHERE id = :collection_id'
+        kwargs = { 'collection_id': collection_id }
+
+    query = 'SELECT * FROM stac_collection {};'.format(where)
+
+    logging.info('get_collections - query: {}'.format(query))
+
+    result, elapsed_time = do_query(query, **kwargs)
+
+    logging.info('get_collections - elapsed_time - query: {}'.format(timedelta(seconds=elapsed_time)))
+
+    logging.info('get_collections - len(result): {}'.format(len_result(result)))
+    # logging.debug('get_collections - result: {}'.format(result))
+
+    return result
+
+
+@log_function_header
+def __search_stac_item_view(where, params):
+    logging.info('__search_stac_item_view')
+
+    insert_deleted_flag_to_where(where)
+
+    # create the WHERE clause
+    where = '\nAND '.join(where)
+
+    # if the user is looking for more than one collection, then I search by partition
+    if 'collections' in params:
+        sql = '''
+            SELECT *
+            FROM (
+                SELECT *, row_number() over (partition by collection) rn
+                FROM stac_item
+                WHERE
+                    {}
+            ) t
+            WHERE rn >= :page AND rn <= :limit;
+        '''.format(where)
+    # else, I search with a normal query
+    else:
+        sql = '''
+            SELECT *
+            FROM stac_item
+            WHERE
+                {}
+            LIMIT :page, :limit
+        '''.format(where)
+
+    # add just where clause to query, because I want to get the number of total results
+    sql_count = '''
+        SELECT collection, COUNT(id) as matched
+        FROM stac_item
+        WHERE
+            {}
+        GROUP BY collection;
+    '''.format(where)
+
+    # logging.info('__search_stac_item_view - where: {}'.format(where))
+    logging.info('__search_stac_item_view - params: {}'.format(params))
+
+    logging.info('__search_stac_item_view - sql_count: {}'.format(sql_count))
+    logging.info('__search_stac_item_view - sql: {}'.format(sql))
+
+    # execute the queries
+    result_count, elapsed_time = do_query(sql_count, **params)
+    logging.info('__search_stac_item_view - elapsed_time - sql_count: {}'.format(timedelta(seconds=elapsed_time)))
+
+    result, elapsed_time = do_query(sql, **params)
+    logging.info('__search_stac_item_view - elapsed_time - sql: {}'.format(timedelta(seconds=elapsed_time)))
+
+    # if `result` or `result_count` is None, then I return an empty list instead
+    if result is None:
+        result = []
+
+    if result_count is None:
+        result_count = []
+
+    if 'collections' in params:
+        for collection in params['collections'].split(','):
+            if not any(d['collection'] == collection for d in result_count):
+                result_count.append(
+                    {'collection': collection, 'matched': 0}
+                )
+
+        result_count = sorted(result_count, key=lambda key: key['collection'])
+
+    # logging.debug('__search_stac_item_view - result: \n{}\n'.format(result))
+    logging.info('__search_stac_item_view - returned: {}'.format(len_result(result)))
+    logging.info('__search_stac_item_view - result_count: \n{}\n'.format(result_count))
+
+    return result, result_count
+
+
+@log_function_header
+def get_collection_items(collection_id=None, item_id=None, bbox=None, time=None,
+                         intersects=None, page=1, limit=10, ids=None, collections=None,
+                         query=None):
+    logging.info('get_collection_items()')
+
+    result = []
+    metadata_related_to_collections = []
+    matched = 0
+
+    params = {
+        'page': page - 1,
+        'limit': limit
+    }
+
+    default_where = []
+
+    # search for ids
+    if item_id is not None or ids is not None:
+        if item_id is not None:
+            default_where.append('id = :item_id')
+            params['item_id'] = item_id
+        elif ids is not None:
+            default_where.append('FIND_IN_SET(id, :ids)')
+            params['ids'] = ','.join(ids)
+
+        logging.info('get_collection_items() - default_where: {}'.format(default_where))
+
+        __result, __matched = __search_stac_item_view(default_where, params)
+
+        result += __result
+        matched += reduce(lambda x, y: x + y['matched'], __matched, 0) if __matched else 0
+
+    else:
         if bbox is not None:
             try:
                 for x in bbox.split(','):
                     float(x)
+
                 params['min_x'], params['min_y'], params['max_x'], params['max_y'] = bbox.split(',')
-                bbox = ""
-                bbox += "((:min_x <= `TR_Longitude` and :min_y <=`TR_Latitude`)"
-                bbox += " or "
-                bbox +=  "(:min_x <= `BR_Longitude` and :min_y <=`TL_Latitude`))"
-                bbox += " and "
-                bbox += "((:max_x >= `BL_Longitude` and :max_y=`BL_Latitude`)"
-                bbox += " or "
-                bbox +=  "(:max_x >= `TL_Longitude` and :max_y >=`BR_Latitude`))"
 
-                where.append("(" + bbox + ")")
-
+                # replace method removes extra espace caused by multi-line String
+                default_where.append(
+                    '''(
+                    ((:min_x <= tr_longitude and :min_y <= tr_latitude)
+                    or
+                    (:min_x <= br_longitude and :min_y <= tl_latitude))
+                    and
+                    ((:max_x >= bl_longitude and :max_y >= bl_latitude)
+                    or
+                    (:max_x >= tl_longitude and :max_y >= br_latitude))
+                    )'''.replace('                ', '')
+                )
             except:
                 raise (InvalidBoundingBoxError())
 
-            if time is not None:
+        if time is not None:
+            if not (isinstance(time, str) or isinstance(time, list)):
+                raise BadRequest('`time` field is not a string or list')
 
-                if "/" in time:
-                    params['time_start'], end = time.split("/")
-                    params['time_end'] = datetime.fromisoformat(end)
-                    where.append("a.Date <= :time_end")
-                else:
-                    params['time_start'] = datetime.fromisoformat(time)
-                where.append("a.Date >= :time_start")
+            # if time is a string, then I convert it to list by splitting it
+            if isinstance(time, str):
+                time = time.split("/")
 
-    where = " and ".join(where)
+            # if there is time_start and time_end, then get them
+            if len(time) == 2:
+                params['time_start'], params['time_end'] = time
+                default_where.append("date <= :time_end")
+            # if there is just time_start, then get it
+            elif len(time) == 1:
+                params['time_start'] = time[0]
 
-    sql += where
+            default_where.append("date >= :time_start")
 
-    sql += " GROUP BY a.SceneId ORDER BY a.Date DESC"
-    sql += " LIMIT :page, :limit"
+        logging.info('get_collection_items() - default_where: {}'.format(default_where))
 
-    result = do_query(sql, **params)
+        # if query is a dict, then get all available fields to search
+        # Specification: https://github.com/radiantearth/stac-spec/blob/v0.7.0/api-spec/extensions/query/README.md
+        if isinstance(query, dict):
+            for field, value in query.items():
+                # eq, neq, lt, lte, gt, gte
+                if 'eq' in value:
+                    default_where.append('{0} = {1}'.format(field, value['eq']))
+                if 'neq' in value:
+                    default_where.append('{0} != {1}'.format(field, value['neq']))
+                if 'lt' in value:
+                    default_where.append('{0} < {1}'.format(field, value['lt']))
+                if 'lte' in value:
+                    default_where.append('{0} <= {1}'.format(field, value['lte']))
+                if 'gt' in value:
+                    default_where.append('{0} > {1}'.format(field, value['gt']))
+                if 'gte' in value:
+                    default_where.append('{0} >= {1}'.format(field, value['gte']))
+                # startsWith, endsWith, contains
+                if 'startsWith' in value:
+                    default_where.append('{0} LIKE \'{1}%\''.format(field, value['startsWith']))
+                if 'endsWith' in value:
+                    default_where.append('{0} LIKE \'%{1}\''.format(field, value['endsWith']))
+                if 'contains' in value:
+                    default_where.append('{0} LIKE \'%{1}%\''.format(field, value['contains']))
 
-    if result is not None:
-        logging.warning('get_collection_items - {} - sql - {}'.format(len(result),sql))
-    else:
-        logging.warning('get_collection_items - no result - sql - {}'.format(sql))
+        if collection_id is not None and isinstance(collection_id, str):
+            collections = [collection_id]
 
-    return result
+        # search for collections
+        if collections is not None:
+            logging.info('get_collection_items() - collections: {}'.format(collections))
+
+            # append the query at the beginning of the list
+            default_where.insert(0, 'FIND_IN_SET(collection, :collections)')
+            params['collections'] = ','.join(collections)
+
+            __result, __matched = __search_stac_item_view(default_where, params)
+
+            result += __result
+            # sum all `matched` keys from the `__matched` list. initialize the first `x` with `0`
+            # source: https://stackoverflow.com/a/42453184
+            matched += reduce(lambda x, y: x + y['matched'], __matched, 0) if __matched else 0
+
+            metadata_related_to_collections = [
+                {
+                    'name': d['collection'],
+                    'context': {
+                        'page': page,
+                        'limit': limit,
+                        'matched': d['matched'],
+                        # count just the results related to the selected collection
+                        'returned': len(list(filter(
+                            lambda x: x['collection'] == d['collection'],
+                            result
+                        )))
+                    }
+                # d - dictionary
+                } for d in __matched
+            ]
+
+        # search for anything else
+        else:
+            __result, __matched = __search_stac_item_view(default_where, params)
+
+            result += __result
+            matched += reduce(lambda x, y: x + y['matched'], __matched, 0) if __matched else 0
+
+    logging.info('get_collection_items() - matched: {}'.format(matched))
+    # logging.debug('get_collection_items() - result: \n\n{}\n\n'.format(result))
+    logging.debug('get_collection_items() - metadata: {}'.format(metadata_related_to_collections))
+
+    return result, matched, metadata_related_to_collections
 
 
-def get_collections():
-    sql = "SELECT a.Dataset AS id FROM Product a, Dataset b WHERE a.Dataset = b.Name GROUP BY Dataset"
-    result = do_query(sql)
+def make_json_collection(collection_result):
+    collection_id = collection_result['id']
 
-    if result is not None:
-        logging.warning('get_collections - {} - sql - {}'.format(len(result),sql))
-    else:
-        logging.warning('get_collections - no result - sql - {}'.format(sql))
+    start_date = collection_result['start_date'].isoformat()
+    end_date = None if collection_result['end_date'] is None else collection_result['end_date'].isoformat()
 
-    return result
-
-
-def get_collection(collection_id):
-    result = do_query("SELECT b.Dataset as id, MIN(BL_Latitude) as miny, MIN(BL_Latitude) as minx, "\
-                      "MAX(TR_Latitude) as maxx, MAX(TR_Longitude) as maxy,"\
-                      "MIN(a.Date) as start, MAX(a.Date) as end , c.Description "\
-                      "FROM Scene a, Product b, Dataset c "\
-                      "WHERE a.sceneId = b.sceneId and b.Dataset = :collection_id and c.name = b.Dataset "\
-                      "GROUP BY b.Dataset", collection_id=collection_id)[0]
-
-    collection = {}
-    collection['id'] = collection_id
-    start = result['start'].isoformat()
-    end = None if result['end'] is None else result['end'].isoformat()
-
-    collection["stac_version"] = os.getenv("API_VERSION")
-    collection["description"] = result["Description"]
-
-    collection["license"] = None
-    collection["properties"] = {}
-    collection["extent"] = {"spatial": [result['minx'],result['miny'],result['maxx'],result['maxy']], "time": [start, end]}
-    collection["properties"] = OrderedDict()
+    collection = {
+        'stac_version': API_VERSION,
+        'id': collection_id,
+        'title': collection_id,
+        'description': collection_result['description'],
+        'license': None,
+        'extent': {
+            'spatial': [
+                collection_result['min_x'], collection_result['min_y'],
+                collection_result['max_x'], collection_result['max_y']
+            ],
+            'temporal': [ start_date, end_date ]
+        },
+        'properties': {},
+        'links': [
+            {'href': f'{BASE_URI}collections/{collection_id}', 'rel': 'self'},
+            {'href': f'{BASE_URI}collections/{collection_id}/items', 'rel': 'items'},
+            {'href': f'{BASE_URI}collections', 'rel': 'parent'},
+            {'href': f'{BASE_URI}collections', 'rel': 'root'},
+            {'href': f'{BASE_URI}stac', 'rel': 'root'}
+        ]
+    }
 
     return collection
 
 
-def make_geojson(items, links):
+def make_json_items(items, links):
+    # logging.debug('make_geojson - items: {}'.format(items))
+    # logging.debug('make_geojson - links: {}'.format(links))
+
     if items is None:
         return {
             'type': 'FeatureCollection',
@@ -145,126 +339,84 @@ def make_geojson(items, links):
         return gjson
 
     for i in items:
-        # pprint('\n\nSceneId: ', i['SceneId'])
-        # pprint('item: ', i, '\n\n')
+        # print('\n\nid: ', i['id'])
+        # print('item: ', end='')
+        # pp.pprint(i)
+        # print('\n\n')
 
         feature = OrderedDict()
 
         feature['type'] = 'Feature'
-        feature['id'] = i['SceneId']
-        feature['collection'] = i['Dataset']
+        feature['id'] = i['id']
+        feature['collection'] = i['collection']
 
         geometry = dict()
         geometry['type'] = 'Polygon'
         geometry['coordinates'] = [
-          [[i['TL_Longitude'], i['TL_Latitude']],
-           [i['BL_Longitude'], i['BL_Latitude']],
-           [i['BR_Longitude'], i['BR_Latitude']],
-           [i['TR_Longitude'], i['TR_Latitude']],
-           [i['TL_Longitude'], i['TL_Latitude']]]
+          [[i['tl_longitude'], i['tl_latitude']],
+           [i['bl_longitude'], i['bl_latitude']],
+           [i['br_longitude'], i['br_latitude']],
+           [i['tr_longitude'], i['tr_latitude']],
+           [i['tl_longitude'], i['tl_latitude']]]
         ]
         feature['geometry'] = geometry
         feature['bbox'] = bbox(feature['geometry']['coordinates'])
 
-        feature['properties'] = {}
-        feature['properties']['datetime'] = datetime.fromisoformat(str(i['Date'])).isoformat()
+        feature['properties'] = {
+            # format the datetime
+            'datetime': datetime.fromisoformat(str(i['datetime'] )).isoformat(),
+            'path': i['path'],
+            'row': i['row'],
+            'satellite': i['satellite'],
+            'sensor': i['sensor'],
+            'cloud_cover': i['cloud_cover'],
+            'sync_loss': i['sync_loss']
+        }
 
-        sql = '''SELECT band, filename
-             FROM Product WHERE SceneId = :item_id
-             GROUP BY band, SceneId;
-             '''
         feature['assets'] = {}
 
-        assets = do_query(sql, item_id=i['SceneId'])
-        for asset in assets:
-            feature['assets'][asset['band']] = {'href': os.getenv('TIF_ROOT') + asset['filename']}
+        # convert string json to dict json
+        i['assets'] = loads(i['assets'])
 
-        feature['assets']['thumbnail'] = {'href': get_browse_image(i['SceneId'])}
+        for asset in i['assets']:
+            feature['assets'][asset['band']] = {
+                'href': getenv('TIF_ROOT') + asset['href'],
+                'type': 'image/vnd.stac.geotiff'
+            }
+            feature['assets'][asset['band'] + '_xml'] = {
+                'href': getenv('TIF_ROOT') + asset['href'].replace('.tif', '.xml'),
+                'type': 'text/xml'
+            }
+
+        feature['assets']['thumbnail'] = {
+            'href': getenv('PNG_ROOT') + i['thumbnail'],
+            'type': 'image/png'
+        }
+
         feature['links'] = deepcopy(links)
-        feature['links'][0]['href'] += i['Dataset'] + "/items/" + i['SceneId']
-        feature['links'][1]['href'] += i['Dataset']
-        feature['links'][2]['href'] += i['Dataset']
+        feature['links'][0]['href'] += i['collection'] + "/items/" + i['id']
+        feature['links'][1]['href'] += i['collection']
+        feature['links'][2]['href'] += i['collection']
 
         features.append(feature)
 
-    if len(features) == 1:
-        return features[0]
+        # print('\nfeature: ')
+        # pp.pprint(feature)
+        # print('\n')
 
     gjson['features'] = features
+
+    # logging.debug('make_geojson - gjson: {}'.format(gjson))
 
     return gjson
 
 
-# def make_geojson(data, totalResults, searchParams, output='json'):
-#     geojson = dict()
-#     geojson['totalResults'] = totalResults
-#     geojson['type'] = 'FeatureCollection'
-#     geojson['features'] = []
-#     base_url = os.environ.get('BASE_URL')
-#     for i in data:
-#         feature = dict()
-#         feature['type'] = 'Feature'
-
-#         geometry = dict()
-#         geometry['type'] = 'Polygon'
-#         geometry['coordinates'] = [
-#           [[i['TL_Longitude'], i['TL_Latitude']],
-#            [i['BL_Longitude'], i['BL_Latitude']],
-#            [i['BR_Longitude'], i['BR_Latitude']],
-#            [i['TR_Longitude'], i['TR_Latitude']],
-#            [i['TL_Longitude'], i['TL_Latitude']]]
-#         ]
-
-#         feature['geometry'] = geometry
-#         properties = dict()
-#         properties['title'] = i['SceneId']
-#         properties['id'] = '{}/granule.{}?uid={}'.format(base_url, output, i['SceneId'])
-#         properties['updated'] = i['IngestDate']
-#         properties['alternate'] = '{}/granule.{}?uid={}'.format(base_url, output, i['SceneId'])
-#         properties['icon'] = get_browse_image(i['SceneId'])
-#         properties['via'] = '{}/metadata/{}'.format(base_url, i['SceneId'])
-
-#         for key, value in i.items():
-#             if key != 'SceneId' and key != 'IngestDate':
-#                 properties[key.lower()] = value
-
-#         products = get_products(i['SceneId'], searchParams)
-
-#         properties['enclosure'] = []
-#         for p in products:
-#             enclosure = dict()
-
-#             enclosure['band'] = p['Band']
-#             enclosure['radiometric_processing'] = p['RadiometricProcessing']
-#             enclosure['type'] = p['Type']
-#             enclosure['url'] = os.environ.get('ENCLOSURE_BASE') + p['Filename']
-#             properties['enclosure'].append(enclosure)
-
-#         feature['properties'] = properties
-#         geojson['features'].append(feature)
-
-#     return geojson
-
-
-def get_browse_image(sceneid):
-    table = ''
-
-    sql = "SELECT QLfilename FROM Qlook WHERE SceneId = :sceneid"
-
-    result = do_query(sql, sceneid=sceneid)
-
-    if result is not None:
-        logging.warning('get_browse_image url - {}'.format(os.getenv('PNG_ROOT') + result[0]['QLfilename']))
-        return os.getenv('PNG_ROOT') + result[0]['QLfilename']
-    else:
-        return None
-
-
 def do_query(sql, **kwargs):
-    connection = 'mysql://{}:{}@{}/{}'.format(os.environ.get('DB_USER'),
-                                              os.environ.get('DB_PASS'),
-                                              os.environ.get('DB_HOST'),
-                                              os.environ.get('DB_NAME'))
+    start_time = time()
+
+    connection = 'mysql://{}:{}@{}/{}'.format(
+        getenv('DB_USER'), getenv('DB_PASS'), getenv('DB_HOST'), getenv('DB_NAME')
+    )
     engine = sqlalchemy.create_engine(connection)
 
     sql = text(sql)
@@ -275,21 +427,24 @@ def do_query(sql, **kwargs):
 
     engine.dispose()
 
-    result = [dict(row) for row in result]
+    result = [ dict(row) for row in result ]
+
+    elapsed_time = time() - start_time
 
     if len(result) > 0:
-        return result
+        return result, elapsed_time
     else:
-        return None
+        return None, elapsed_time
 
 
 def bbox(coord_list):
     box = []
+
     for i in (0, 1):
         res = sorted(coord_list[0], key=lambda x: x[i])
         box.append((res[0][i], res[-1][i]))
-    ret = [box[0][0], box[1][0], box[0][1], box[1][1]]
-    return ret
+
+    return [box[0][0], box[1][0], box[0][1], box[1][1]]
 
 
 class InvalidBoundingBoxError(Exception):

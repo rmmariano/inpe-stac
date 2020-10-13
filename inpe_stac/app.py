@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """
 STAC API Specification
 
@@ -5,12 +7,16 @@ Specification: https://github.com/radiantearth/stac-spec/blob/master/api-spec/ap
 OpenAPI definition: https://stacspec.org/STAC-ext-api.html
 """
 
-import os
-
-from flask import Flask, jsonify, request, abort
+from flask import Flask, jsonify, request
 from flasgger import Swagger
+from werkzeug.exceptions import BadRequest
 
-from inpe_stac import data
+from inpe_stac.data import get_collections, get_collection_items, \
+                            make_json_items, make_json_collection
+from inpe_stac.environment import BASE_URI, API_VERSION
+from inpe_stac.log import logging
+from inpe_stac.decorator import log_function_header, log_function_footer, \
+                                catch_generic_exceptions
 
 
 app = Flask(__name__)
@@ -23,8 +29,6 @@ app.config["SWAGGER"] = {
 }
 
 swagger = Swagger(app, template_file="./spec/api/v0.7/STAC.yaml")
-
-BASE_URI = os.getenv("BASE_URI")
 
 
 @app.after_request
@@ -39,72 +43,156 @@ def after_request(response):
 ##################################################
 
 @app.route("/", methods=["GET"])
+@log_function_header
+@log_function_footer
+@catch_generic_exceptions
 def index():
-    links = [{"href": f"{BASE_URI}", "rel": "self"},
-             {"href": f"{BASE_URI}docs", "rel": "service"},
-             {"href": f"{BASE_URI}conformance", "rel": "conformance"},
-             {"href": f"{BASE_URI}collections", "rel": "data"},
-             {"href": f"{BASE_URI}stac", "rel": "data"},
-             {"href": f"{BASE_URI}stac/search", "rel": "search"}]
+    links = [
+        {"href": f"{BASE_URI}", "rel": "self"},
+        {"href": f"{BASE_URI}docs", "rel": "service"},
+        {"href": f"{BASE_URI}conformance", "rel": "conformance"},
+        {"href": f"{BASE_URI}collections", "rel": "data"},
+        {"href": f"{BASE_URI}stac", "rel": "data"},
+        {"href": f"{BASE_URI}stac/search", "rel": "search"}
+    ]
+
     return jsonify(links)
 
 
 @app.route("/conformance", methods=["GET"])
+@log_function_header
+@log_function_footer
+@catch_generic_exceptions
 def conformance():
-    conforms = {"conformsTo": ["http://www.opengis.net/spec/wfs-1/3.0/req/core",
-                               "http://www.opengis.net/spec/wfs-1/3.0/req/oas30",
-                               "http://www.opengis.net/spec/wfs-1/3.0/req/html",
-                               "http://www.opengis.net/spec/wfs-1/3.0/req/geojson"]}
+    conforms = {
+        "conformsTo": [
+            "http://www.opengis.net/spec/wfs-1/3.0/req/core",
+            "http://www.opengis.net/spec/wfs-1/3.0/req/oas30",
+            "http://www.opengis.net/spec/wfs-1/3.0/req/html",
+            "http://www.opengis.net/spec/wfs-1/3.0/req/geojson"
+        ]
+    }
+
     return jsonify(conforms)
 
 
-# @app.route("/collections", methods=["GET"])
-# def collections():
-#     # TODO
-#     pass
+@app.route("/collections", methods=["GET"])
+@log_function_header
+@log_function_footer
+@catch_generic_exceptions
+def collections():
+    """
+    Specification: https://github.com/radiantearth/stac-spec/blob/v0.7.0/collection-spec/collection-spec.md#collection-fields
+    """
+
+    result = get_collections()
+
+    collections = {
+        'collections': []
+    }
+
+    for collection in result:
+        collections['collections'].append(
+            make_json_collection(collection)
+        )
+
+    return jsonify(collections)
 
 
 @app.route("/collections/<collection_id>", methods=["GET"])
-def collections_id(collection_id):
-    collection = data.get_collection(collection_id)
-    links = [{"href": f"{BASE_URI}collections/{collection_id}", "rel": "self"},
-             {"href": f"{BASE_URI}collections/{collection_id}/items", "rel": "items"},
-             {"href": f"{BASE_URI}collections", "rel": "parent"},
-             {"href": f"{BASE_URI}collections", "rel": "root"},
-             {"href": f"{BASE_URI}stac", "rel": "root"}]
+@log_function_header
+@log_function_footer
+@catch_generic_exceptions
+def collections_collections_id(collection_id):
+    """
+    Specification: https://github.com/radiantearth/stac-spec/blob/v0.7.0/collection-spec/collection-spec.md#collection-fields
+    """
 
-    collection['links'] = links
+    result = get_collections(collection_id)
+
+    # if there is not a result, then it returns an empty collection
+    if result is None:
+        return jsonify({})
+
+    # get the only one element inside the list and create the GeoJSON related to collection
+    collection = make_json_collection(result[0])
 
     return jsonify(collection)
 
 
 @app.route("/collections/<collection_id>/items", methods=["GET"])
-def collection_items(collection_id):
-    items = data.get_collection_items(collection_id=collection_id, bbox=request.args.get('bbox', None),
-                                      time=request.args.get('time', None), type=request.args.get('type', None),
-                                      page=int(request.args.get('page', 1)),
-                                      limit=int(request.args.get('limit', 10)))
+@log_function_header
+@log_function_footer
+@catch_generic_exceptions
+def collections_collections_id_items(collection_id):
+    """
+    Example of full route:
+        - http://localhost:8089/inpe-stac/collections/CBERS4A_MUX_L2_DN/items?bbox=-68.0273437,-25.0059726,-34.9365234,0.3515602&limit=10000&time=2019-12-22T00:00:00/2020-01-22T23:59:00
+    """
 
-    links = [{"href": f"{BASE_URI}collections/", "rel": "self"},
-             {"href": f"{BASE_URI}collections/", "rel": "parent"},
-             {"href": f"{BASE_URI}collections/", "rel": "collection"},
-             {"href": f"{BASE_URI}stac", "rel": "root"}]
+    # parameters
+    params = {
+        'collection_id': collection_id,
+        'bbox': request.args.get('bbox', None),
+        'time': request.args.get('time', None),
+        'intersects': request.args.get('intersects', None),
+        'page': int(request.args.get('page', 1)),
+        'limit': int(request.args.get('limit', 10)),
+        'ids': request.args.get('ids', None)
+    }
 
-    gjson = data.make_geojson(items, links)
+    items, matched, _ = get_collection_items(**params)
 
-    return jsonify(gjson)
+    links = [
+        {"href": f"{BASE_URI}collections/", "rel": "self"},
+        {"href": f"{BASE_URI}collections/", "rel": "parent"},
+        {"href": f"{BASE_URI}collections/", "rel": "collection"},
+        {"href": f"{BASE_URI}stac", "rel": "root"}
+    ]
+
+    items_collection = make_json_items(items, links)
+
+    items_collection['context'] = {
+        "page": params['page'],
+        "limit": params['limit'],
+        "matched": matched,
+        "returned": len(items_collection['features']),
+        "meta": None
+    }
+
+    return jsonify(items_collection)
 
 
 @app.route("/collections/<collection_id>/items/<item_id>", methods=["GET"])
-def items_id(collection_id, item_id):
-    item = data.get_collection_items(collection_id=collection_id, item_id=item_id)
+@log_function_header
+@log_function_footer
+@catch_generic_exceptions
+def collections_collections_id_items_items_id(collection_id, item_id):
+    logging.info('collections_collections_id_items_items_id()')
 
-    links = [{"href": f"{BASE_URI}collections/", "rel": "self"},
-             {"href": f"{BASE_URI}collections/", "rel": "parent"},
-             {"href": f"{BASE_URI}collections/", "rel": "collection"},
-             {"href": f"{BASE_URI}stac", "rel": "root"}]
+    logging.info('collections_collections_id_items_items_id() - collection_id: %s', collection_id)
+    logging.info('collections_collections_id_items_items_id() - item_id: %s', item_id)
 
-    gjson = data.make_geojson(item, links)
+    item, _, _ = get_collection_items(collection_id=collection_id, item_id=item_id)
+
+    links = [
+        {"href": f"{BASE_URI}collections/", "rel": "self"},
+        {"href": f"{BASE_URI}collections/", "rel": "parent"},
+        {"href": f"{BASE_URI}collections/", "rel": "collection"},
+        {"href": f"{BASE_URI}stac", "rel": "root"}
+    ]
+
+    gjson = make_json_items(item, links)
+
+    logging.info('collections_collections_id_items_items_id() - gjson: %s', gjson)
+
+    logging.info('collections_collections_id_items_items_id() - features: %s', gjson['features'])
+    logging.info('collections_collections_id_items_items_id() - features: %s', bool(gjson['features']))
+
+    if gjson['features']:
+        # I'm looking for one item by item_id, ergo just one feature will be returned,
+        # then I get this one feature in order to return it
+        gjson = gjson['features'][0]
 
     return jsonify(gjson)
 
@@ -114,17 +202,19 @@ def items_id(collection_id, item_id):
 # Specification: https://github.com/radiantearth/stac-spec/blob/master/api-spec/api-spec.md#stac-endpoints
 ##################################################
 
-@app.route("/collections", methods=["GET"])
 @app.route("/stac", methods=["GET"])
+@log_function_header
+@log_function_footer
+@catch_generic_exceptions
 def stac():
     """
-    Specification: https://github.com/radiantearth/stac-spec/blob/master/catalog-spec/catalog-spec.md#catalog-fields
+    Specification: https://github.com/radiantearth/stac-spec/blob/v0.7.0/catalog-spec/catalog-spec.md#catalog-fields
     """
 
-    collections = data.get_collections()
+    collections = get_collections()
 
     catalog = {
-        "stac_version": os.getenv("API_VERSION"),
+        "stac_version": API_VERSION,
         "id": "inpe-stac",
         "description": "INPE STAC Catalog",
         "links": [
@@ -148,45 +238,76 @@ def stac():
 
 
 @app.route("/stac/search", methods=["GET", "POST"])
+@log_function_header
+@log_function_footer
+@catch_generic_exceptions
 def stac_search():
-    bbox, time, ids, collections, page, limit = None, None, None, None, None, None
+    logging.info('stac_search()')
+
+    logging.info('stac_search() - method: %s', request.method)
+
     if request.method == "POST":
         if request.is_json:
             request_json = request.get_json()
 
-            bbox = request_json.get('bbox', None)
-            if bbox is not None:
-                bbox = ",".join([str(x) for x in bbox])
+            logging.info('stac_search() - request_json: %s', request_json)
 
-            time = request_json.get('time', None)
+            params = {
+                'bbox': request_json.get('bbox', None),
+                'time': request_json.get('time', None),
+                'ids': request_json.get('ids', None),
+                'collections': request_json.get('collections', None),
+                'page': int(request_json.get('page', 1)),
+                'limit': int(request_json.get('limit', 10)),
+                'query': request_json.get('query', None)
+            }
 
-            ids = request_json.get('ids', None)
-            if ids is not None:
-                ids = ",".join([x for x in ids])
+            if params['bbox'] is not None:
+                params['bbox'] = ','.join([str(x) for x in params['bbox']])
 
-            collections = request_json.get('collections', None)
+            if params['ids'] is not None:
+                params['ids'] = ','.join([id for id in params['ids']])
 
-            page = int(request_json.get('page', 1))
-            limit = int(request_json.get('limit', 10))
+            # if params['collections'] is not None:
+            #     params['collections'] = ','.join([collection for collection in params['collections']])
         else:
-            abort(400, "POST Request must be an application/json")
+            raise BadRequest('POST Request must be an application/json')
 
-    elif request.method == "GET":
-        bbox = request.args.get('bbox', None)
-        time = request.args.get('time', None)
-        ids = request.args.get('ids', None)
-        collections = request.args.get('collections', None)
-        page = int(request.args.get('page', 1))
-        limit = int(request.args.get('limit', 10))
+    elif request.method == 'GET':
+        logging.info('stac_search() - request.args: %s', request.args)
 
-    items = data.get_collection_items(collections=collections, bbox=bbox, time=time, ids=ids)
+        params = {
+            'bbox': request.args.get('bbox', None),
+            'time': request.args.get('time', None),
+            'ids': request.args.get('ids', None),
+            'collections': request.args.get('collections', None),
+            'page': int(request.args.get('page', 1)),
+            'limit': int(request.args.get('limit', 10))
+        }
 
-    links = [{"href": f"{BASE_URI}collections/", "rel": "self"},
-             {"href": f"{BASE_URI}collections/", "rel": "parent"},
-             {"href": f"{BASE_URI}collections/", "rel": "collection"},
-             {"href": f"{BASE_URI}stac", "rel": "root"}]
+        if isinstance(params['collections'], str):
+            params['collections'] = params['collections'].split(',')
 
-    gjson = data.make_geojson(items, links=links)
+    logging.info('stac_search() - params: %s', params)
+
+    items, matched, metadata_related_to_collections = get_collection_items(**params)
+
+    links = [
+        {'href': f'{BASE_URI}collections/', 'rel': 'self'},
+        {'href': f'{BASE_URI}collections/', 'rel': 'parent'},
+        {'href': f'{BASE_URI}collections/', 'rel': 'collection'},
+        {'href': f'{BASE_URI}stac', 'rel': 'root'}
+    ]
+
+    gjson = make_json_items(items, links=links)
+
+    gjson['context'] = {
+        'page': params['page'],
+        'limit': params['limit'],
+        'matched': matched,
+        'returned': len(gjson['features']),
+        'meta': None if not metadata_related_to_collections else metadata_related_to_collections
+    }
 
     return jsonify(gjson)
 
